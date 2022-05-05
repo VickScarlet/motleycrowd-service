@@ -1,0 +1,13 @@
+{
+  "name": "gambler",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "src/index.js",
+  "repository": "https://github.com/VickScarlet/gamblerCore.git",
+  "author": "Vick Scarlet <scarlet_vick@outlook.com>",
+  "license": "AGPL-3.0",
+  "dependencies": {},
+  "devDependencies": {
+    "webpack": "^5.72.0"
+  }
+}
