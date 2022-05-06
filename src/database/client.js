@@ -25,9 +25,18 @@ export default class Client {
         this.#db = client.db(this.#dbName);
     }
 
-    async find(collectionName, query) {
+    async findOne(collectionName, query) {
         const collection = this.#db.collection(collectionName);
-        return collection.find(query).toArray();
+        const data = collection.find(query);
+        if(data) delete data._id;
+        return data;
+    }
+
+    async findAll(collectionName, query) {
+        const collection = this.#db.collection(collectionName);
+        const data = await collection.find(query).toArray();
+        data.forEach(item => delete item._id);
+        return data;
     }
 
     async insert(collectionName, data) {
@@ -37,7 +46,7 @@ export default class Client {
 
     async update(collectionName, query, data) {
         const collection = this.#db.collection(collectionName);
-        return collection.updateOne(query, data);
+        return collection.updateOne(query, {'$set': data}, {upsert: true});
     }
 
     async delete(collectionName, query) {

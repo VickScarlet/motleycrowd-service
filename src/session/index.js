@@ -1,6 +1,4 @@
-import express from 'express';
 import { WebSocketServer } from 'ws';
-import { createServer } from 'http';
 import { v4 as uuidGenerator } from 'uuid';
 
 export default class Session {
@@ -11,19 +9,11 @@ export default class Session {
     #handle;
     #sessions = new Map();
 
-    start({port, router}) {
-        const app = express();
-        const wss = new WebSocketServer({ noServer: true });
-        const server = createServer(app);
+    get online() { return this.#sessions.size }
 
-        for(const p in router) {
-            app.use(p, express.static(router[p]));
-        }
+    start({port}) {
+        const wss = new WebSocketServer({port});
         wss.on('connection', session => this.#sessionConnection(session));
-        server.on('upgrade', (request, socket, head) =>
-            wss.handleUpgrade(request, socket, head, ws => wss.emit('connection', ws, request))
-        );
-        server.listen(port);
     }
 
     #sessionConnection(session) {

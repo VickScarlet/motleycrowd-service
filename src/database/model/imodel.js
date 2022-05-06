@@ -1,15 +1,76 @@
 export default class IModel {
-    constructor() {}
+    constructor({client, limit, collection, key, autoSave = 10000}) {
+        this.#client = client;
+        this.#limit = limit;
+        this.#collection = collection;
+        this.#key = key;
+        this.#autoSave = autoSave;
+        this.#cacheMap = new Map();
+        this.#change = new Set();
+    };
 
     #client;
+    #limit;
     #collection;
-    #cache;
+    #key;
+    #cacheMap;
+    #change;
+    #autoSave;
+    #interval;
 
-    async initialize({client, collection}) {
-        this.#collection = collection;
+    async initialize() {
+        if(this.#limit == -1) await this.#fullCache();
+        this.#interval = setInterval(() => this.save(), this.#autoSave);
     }
 
     get client() { return this.#client; }
     set client(client) { this.#client = client; }
+
+    async #fullCache() { 
+        const data = await this.#client.findAll(this.#collection, {});
+        for(const item of data) {
+            const key = item[this.#key];
+            this.#cacheMap.set(key, item);
+        }
+    }
+
+    change(key, data) {
+        this.#change.add(key);
+        this.#cacheMap.set(key, data);
+    }
+
+    has(key) {
+        return this.#cacheMap.has(key);
+    }
+
+    findCache(key) {
+        if(this.has(key))
+            return clone(this.#cacheMap.get(key));
+        return null;
+    }
+
+    async find(key) {
+        if(this.has(key)) 
+            return clone(this.#cacheMap.get(key));
+        const data = await this.#client.findOne({[this.#key]: key});
+        if(data) this.#cacheMap.set(key, data);
+        return data || null;
+    }
+
+    async save() { 
+        for(const key of this.#change) {
+            const data = this.#cacheMap.get(key);
+            this.#client.update(this.#collection, {[this.#key]: key}, data);
+        }
+        this.#change.clear();
+    }
+
+    async destroy() {
+        clearInterval(this.#interval);
+        await this.save();
+        this.#client = null;
+        this.#cacheMap.clear();
+        this.#change.clear();
+    }
 
 }
