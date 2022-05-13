@@ -1,5 +1,5 @@
 export default class IModel {
-    constructor({client, limit, collection, key, autoSave = 10000}) {
+    constructor({client, limit, collection, key, autoSave = 600000}) {
         this.#client = client;
         this.#limit = limit;
         this.#collection = collection;
@@ -19,6 +19,7 @@ export default class IModel {
     #interval;
 
     async initialize() {
+        await this.#client.createIndex(this.#collection, [this.#key]);
         if(this.#limit == -1) await this.#fullCache();
         this.#interval = setInterval(() => this.save(), this.#autoSave);
     }
@@ -58,10 +59,16 @@ export default class IModel {
     }
 
     async save() { 
-        for(const key of this.#change) {
-            const data = this.#cacheMap.get(key);
-            this.#client.update(this.#collection, {[this.#key]: key}, data);
-        }
+        await Promise.all(
+            Array.from(this.#change)
+            .map(
+                key => this.#client.update(
+                    this.#collection, 
+                    {[this.#key]: key}, 
+                    this.#cacheMap.get(key)
+                )
+            )
+        );
         this.#change.clear();
     }
 

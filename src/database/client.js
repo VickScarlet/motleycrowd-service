@@ -25,6 +25,19 @@ export default class Client {
         this.#db = client.db(this.#dbName);
     }
 
+    async createIndex(collectionName, indexs/*, unique = false*/) {
+        const collection = this.#db.collection(collectionName);
+        const options = {};
+        for(const index of indexs) {
+            if(typeof index === 'string') {
+                options[index] = 1;
+            } else if(typeof index === 'object') {
+                options[index.key] = index.value;
+            }
+        }
+        return collection.createIndex(options/*, {unique}*/);
+    }
+
     async findOne(collectionName, query) {
         const collection = this.#db.collection(collectionName);
         const data = collection.find(query);

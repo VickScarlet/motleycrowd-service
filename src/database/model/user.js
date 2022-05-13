@@ -8,7 +8,7 @@ export default class User extends IModel {
             limit: -1,
             collection: 'user',
             key: 'username',
-
+            // autoSave: 10000,
         });
     }
 
