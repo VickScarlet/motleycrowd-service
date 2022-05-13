@@ -19,6 +19,7 @@ export default class User {
     }
 
     authenticate(uuid, username, password) {
+        if(!this.#checkUsername(username)) return { r: false };
         const user = $.dbModel('user').findUser(username);
         if(!user) return { r: false };
         if(user.password !== $.passwordEncrypt(password)) return { r: false };
@@ -27,6 +28,7 @@ export default class User {
     }
 
     register(uuid, username, password) {
+        if(!this.#checkUsername(username)) return { r: false };
         const user = $.dbModel('user').findUser(username);
         if(user) return { r: false };
         $.dbModel('user').createUser(username, $.passwordEncrypt(password));
@@ -36,6 +38,13 @@ export default class User {
 
     logout(uuid) {
         this.#authenticated.delete(uuid);
+    }
+
+    #checkUsername(username) {
+        if(typeof username !== 'string') return false;
+        if(username.length < 1) return false;
+        if(username.length > 24) return false;
+        return true;
     }
 
 }
