@@ -1,5 +1,6 @@
 import { WebSocketServer } from 'ws';
 import { v4 as uuidGenerator } from 'uuid';
+import { gzip } from 'zlib';
 
 export default class Session {
     constructor({handle}) {
@@ -14,6 +15,18 @@ export default class Session {
     start({port}) {
         const wss = new WebSocketServer({port});
         wss.on('connection', session => this.#sessionConnection(session));
+    }
+
+    async #packet(data) {
+        data = JSON.stringify(data);
+        return data.length > 30 ? new Promise(
+            (resolve, reject) => gzip(
+                data,
+                (error, result)=> {
+                    error? reject(error): resolve(result);
+                }
+            )
+        ) : data;
     }
 
     #sessionConnection(session) {
@@ -40,16 +53,22 @@ export default class Session {
         const [guid, receive] = JSON.parse(message.toString());
         console.debug('[message]', uuid.substring(0,8), receive);
         const data = await this.#handle('message', uuid, receive);
-        session.send(JSON.stringify([2, guid, data]));
+        const packetMessage = await this.#packet([2, guid, data]);
+        session.send(packetMessage);
     }
 
-    broadcast(message) {
+    async broadcast(message) {
+        if(!this.#sessions.size) return;
         this.#sessions.forEach(session => session.send(JSON.stringify([0, message])));
+        message = await this.#packet([0, message]);
+        this.#sessions.forEach(session => session.send(message));
     }
 
-    send(uuid, message) {
+    async send(uuid, message) {
         const session = this.#sessions.get(uuid);
-        if(session) session.send(JSON.stringify([1, message]));
+        if(!session) return;
+        message = await this.#packet([1, message]);
+        session.send(message);
     }
 
     ping(uuid) {
