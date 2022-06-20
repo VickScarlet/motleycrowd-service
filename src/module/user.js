@@ -1,6 +1,10 @@
-export default class User {
+import IModule from "./imodule.js";
+
+export default class User extends IModule {
 
     #authenticated = new Map();
+    #users = new Map();
+    #counter = 46656;
 
     get authenticatedUUID() {
         return this.#authenticated.keys();
@@ -23,7 +27,18 @@ export default class User {
         const user = $.dbModel('user').findUser(username);
         if(!user) return { r: false };
         if(user.password !== $.passwordEncrypt(password)) return { r: false };
+        const lastUUid = this.#users.get(username);
+        this.#authenticated.delete(lastUUid);
+        this.#users.set(username, uuid);
         this.#authenticated.set(uuid, username);
+        $.close(lastUUid, 3001, 'AAuth');
+        return { r: true };
+    }
+
+    guest(uuid) {
+        const guestNumber = `#guest#${(this.#counter++).toString(36)}`;
+        this.#authenticated.set(uuid, guestNumber);
+        this.#users.set(guestNumber, uuid);
         return { r: true };
     }
 
@@ -33,18 +48,34 @@ export default class User {
         if(user) return { r: false };
         $.dbModel('user').createUser(username, $.passwordEncrypt(password));
         this.#authenticated.set(uuid, username);
+        this.#users.set(username, uuid);
         return { r: true };
     }
 
     logout(uuid) {
+        const username = this.#authenticated.get(uuid);
+        this.core.game.leave(uuid);
+        this.#users.delete(username);
         this.#authenticated.delete(uuid);
     }
 
     #checkUsername(username) {
         if(typeof username !== 'string') return false;
+        if(username[0]=='#') return false;
         if(username.length < 1) return false;
         if(username.length > 24) return false;
         return true;
+    }
+
+    username(uuid) {
+        return this.#authenticated.get(uuid);
+    }
+
+    isGuest(uuid) {
+        const id = this.#authenticated.get(uuid);
+        if(!id) return true;
+        if(id[0]=='#') return true;
+        return false;
     }
 
 }

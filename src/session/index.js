@@ -13,7 +13,7 @@ export default class Session {
     get online() { return this.#sessions.size }
 
     start({port}) {
-        const wss = new WebSocketServer({port});
+        const wss = new WebSocketServer({host: '0.0.0.0', port});
         wss.on('connection', session => this.#sessionConnection(session));
     }
 
@@ -29,13 +29,16 @@ export default class Session {
         ) : data;
     }
 
-    #sessionConnection(session) {
+    async #sessionConnection(session) {
         const uuid = uuidGenerator();
         this.#sessions.set(uuid, session);
         console.debug('[connected]', uuid);
         session.on('close', () => this.#sessionClose(uuid, session));
         session.on('message', message => this.#sessionMessage(uuid, message, session));
         session.on('error', error => this.#sessionError(uuid, error, session));
+        const data = await this.#handle('connected', uuid);
+        const packetMessage = await this.#packet([-1, data]);
+        session.send(packetMessage);
     }
 
     async #sessionClose(uuid) {
@@ -65,10 +68,26 @@ export default class Session {
     }
 
     async send(uuid, message) {
+        if(Array.isArray(uuid)) return this.#lsend(uuid, message);
         const session = this.#sessions.get(uuid);
         if(!session) return;
         message = await this.#packet([1, message]);
         session.send(message);
+    }
+
+    async #lsend(uuids, message) {
+        message = await this.#packet([1, message]);
+        for(const uuid of uuids) {
+            const session = this.#sessions.get(uuid);
+            if(!session) continue;
+            session.send(message);
+        }
+    }
+
+    async close(uuid, code, reason) {
+        const session = this.#sessions.get(uuid);
+        if(!session) return;
+        session.close(code||0, reason||"");
     }
 
     ping(uuid) {

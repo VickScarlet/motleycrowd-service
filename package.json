@@ -7,7 +7,7 @@
   "author": "Vick Scarlet <scarlet_vick@outlook.com>",
   "license": "AGPL-3.0",
   "scripts": {
-    "start": "node ./src/index.js"
+    "start": "sudo node ./src/index.js"
   },
   "dependencies": {
     "mongodb": "^4.5.0",
