@@ -10,8 +10,6 @@ export default class Room {
     #start = false;
     #questions = [];
     #question = -1;
-    #answers = [];
-    #answer;
 
     get ready() {return this.#users.size == this.#limit;}
 
@@ -31,8 +29,8 @@ export default class Room {
             setTimeout(()=>{
                 if(!this.ready) return;
                 this.#start = true;
-                this.#questions = $.randomQuestions();
-                this.#q();
+                this.#questions = $.randomQuestions(this.#users);
+                this.#next();
             }, this.#startWait);
 
         return true;
@@ -51,26 +49,24 @@ export default class Room {
 
     answer(uuid, answer, question) {
         if(!this.#start) return false;
-        if(this.#answer.has(uuid) || question != this.#questions[this.#question]) return false;
-        this.#answer.set(uuid, answer);
-        if(this.#answer.size == this.#live.size) {
-            // TODO: 本题答题结束
-            this.#q();
+        if(this.#questions.has(uuid) || question != this.#questions.id) return false;
+        this.#questions.answer(uuid, answer);
+        if(this.#questions.answerSize != this.#live.size) {
+            $core.send(Array.from(this.#live), 'answer', this.#questions.answerSize);
+            return true;
         }
-        $core.send(Array.from(this.#live), 'answer', this.#answer.size);
+        // TODO: 本题答题结束
+        this.#questions.judge();
+        this.#next();
         return true;
     }
 
-    #q() {
-        if(this.#answer) {
-            this.#answers.push(this.#answer);
-        }
-        this.#answer = new Map();
-        this.#question ++;
-        if(this.#question == this.#questions.length) {
+    #next() {
+        const question = this.#questions.next();
+        if(!question) {
             // TODO: 完成
             return;
         }
-        $core.send(Array.from(this.#live), 'question', this.#questions[this.#question]);
+        $core.send(Array.from(this.#live), 'question', question.id);
     }
 }

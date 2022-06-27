@@ -1,3 +1,4 @@
+import {readFile} from 'fs/promises';
 import './global.function.js';
 import errorcode from './errorcode.js';
 import API from './api/index.js';
@@ -25,10 +26,12 @@ const core = new Core();
 globalThis.$core = core;
 await core.initialize();
 
-const question = new Question();
+const question = new Question({
+    questions: JSON.parse(await readFile('data/questions.json', 'utf8')),
+});
 globalThis.$question = question;
 await question.initialize();
-$.registerAPI('randomQuestions', ()=>question.randomQuestions());
+$.registerAPI('randomQuestions', (...args)=>question.randomQuestions(...args));
 
 const session = new Session({
     handle: (type, ...args) => {
