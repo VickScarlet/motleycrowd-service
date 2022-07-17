@@ -7,10 +7,11 @@
   "author": "Vick Scarlet <scarlet_vick@outlook.com>",
   "license": "AGPL-3.0",
   "scripts": {
-    "start": "sudo node ./src/index.js",
+    "start": "node ./src/index.js",
     "xlsx2json": "vt transform data/questions.xlsx"
   },
   "dependencies": {
+    "log4js": "^6.6.0",
     "mongodb": "^4.5.0",
     "uuid": "^8.3.2",
     "ws": "^8.6.0"

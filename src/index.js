@@ -10,9 +10,11 @@ import Question from './question/index.js';
 globalThis.$err = errorcode;
 globalThis.$ = globalThis.$api = API;
 
+console.info('[System]', 'initializing...');
+console.info('[System|database]', 'initializing...');
 const db = new Database({
     connection: {
-        host: '192.168.50.217',
+        host: 'scarlet-mini',
         port: 27017,
         dbName: 'test',
     }
@@ -21,18 +23,24 @@ const db = new Database({
 globalThis.$db = db;
 await db.initialize();
 $.registerAPI('dbModel', model => db.model(model));
+console.info('[System|database]', 'ok.');
 
+console.info('[System|core]', 'initializing...');
 const core = new Core();
 globalThis.$core = core;
 await core.initialize();
+console.info('[System|core]', 'ok.');
 
+console.info('[System|question]', 'initializing...');
 const question = new Question({
     questions: JSON.parse(await readFile('data/questions.json', 'utf8')),
 });
 globalThis.$question = question;
 await question.initialize();
 $.registerAPI('randomQuestions', (...args)=>question.randomQuestions(...args));
+console.info('[System|question]', 'ok.');
 
+console.info('[System|session]', 'initializing...');
 const session = new Session({
     handle: (type, ...args) => {
         switch(type) {
@@ -63,3 +71,6 @@ session.start({
         '/src': './client/src'
     },
 });
+console.info('[System|session]', 'ok.');
+
+console.info('[System]', 'ok.');

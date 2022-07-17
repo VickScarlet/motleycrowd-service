@@ -13,4 +13,6 @@ commands.set('guest', (uuid) => {
     return $core.user.guest(uuid);
 });
 
-
+commands.set('logout', (uuid) => {
+    return $core.user.logout(uuid);
+});

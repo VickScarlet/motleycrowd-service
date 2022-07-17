@@ -23,10 +23,10 @@ export default class User extends IModule {
     }
 
     authenticate(uuid, username, password) {
-        if(!this.#checkUsername(username)) return { r: false };
+        if(!this.#checkUsername(username)) return { r: false, e: $err.NO_USER };
         const user = $.dbModel('user').findUser(username);
-        if(!user) return { r: false };
-        if(user.password !== $.passwordEncrypt(password)) return { r: false };
+        if(!user) return { r: false, e: $err.NO_USER };
+        if(user.password !== $.passwordEncrypt(password)) return { r: false, e: $err.PASSWORD_ERROR };
         const lastUUid = this.#users.get(username);
         this.#authenticated.delete(lastUUid);
         this.#users.set(username, uuid);
@@ -57,14 +57,14 @@ export default class User extends IModule {
         this.core.game.leave(uuid);
         this.#users.delete(username);
         this.#authenticated.delete(uuid);
+        return { r: true };
     }
 
     #checkUsername(username) {
         if(typeof username !== 'string') return false;
         if(username[0]=='#') return false;
         if(username.length < 1) return false;
-        if(username.length > 24) return false;
-        return true;
+        return username.length <= 24;
     }
 
     username(uuid) {
@@ -74,8 +74,7 @@ export default class User extends IModule {
     isGuest(uuid) {
         const id = this.#authenticated.get(uuid);
         if(!id) return true;
-        if(id[0]=='#') return true;
-        return false;
+        return id[0]=='#';
     }
 
 }

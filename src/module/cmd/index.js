@@ -5,14 +5,14 @@ import GameCommand from "./game.js";
 export default class Commander extends IModule {
 
     async do(uuid, {c, d}) {
-        if(!c) return { r: false, e: $err.E_NO_CMD };
+        if(!c) return { r: false, e: $err.NO_CMD };
         const [ns, cmd] = c.split(".");
         let namespace;
         switch(ns) {
             case 'user': namespace = UserCommand; break;
             case 'game':
                 if(!this.core.user.isAuthenticated(uuid)) {
-                    return {r: false, e: $err.E_NO_AUTH};
+                    return {r: false, e: $err.NO_AUTH};
                 }
                 namespace = GameCommand;
                 break;

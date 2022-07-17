@@ -9,15 +9,15 @@ export default class Game extends IModule {
     #userRoom = new Map();
 
     join(uuid, roomId) {
-        if(!this.#privates.has(roomId)) return null;
+        if(!this.#privates.has(roomId)) return {r: false};
         const room = this.#privates.get(roomId);
         room.join(uuid);
         this.#userRoom.set(uuid, [room, false, roomId]);
-        return room.info;
+        return {r: true, info: room.info};
     }
 
     random(uuid) {
-        if(this.#userRoom.has(uuid)) return;
+        if(this.#userRoom.has(uuid)) return {r: false};
         let room;
         if(this.#randomPending.length > 0) {
             room = this.#randomPending[0];
@@ -34,32 +34,33 @@ export default class Game extends IModule {
             this.#randomPending.shift();
         }
 
-        return room.info;
+        return {r: true, info: room.info};
     }
 
     leave(uuid) {
-        if(!this.#userRoom.has(uuid)) return;
+        if(!this.#userRoom.has(uuid)) return {r: true};
         const [room, isRandomRoom, roomId] = this.#userRoom.get(uuid)
         this.#userRoom.delete(uuid);
-        if(!room.leave(uuid)) return;
+        if(!room.leave(uuid)) return {r: true};
         if(isRandomRoom) this.#randoms.delete(room);
         else this.#privates.delete(roomId);
+        return {r: true};
     }
 
     create(uuid, configure) {
-        if(this.#userRoom.has(uuid)) return false;
+        if(this.#userRoom.has(uuid)) return {r: false};
         const roomId = this.#randomId();
         const room = this.#newRoom(configure);
         this.#privates.set(roomId, room);
         this.#userRoom.set(uuid, [room, false, roomId]);
         room.join(uuid);
-        return roomId;
+        return {r: true, room: roomId};
     }
 
     answer(uuid, answer, question) {
-        if(!this.#userRoom.has(uuid)) return;
+        if(!this.#userRoom.has(uuid)) return {r: false};
         const [room] = this.#userRoom.get(uuid);
-        return room.answer(uuid, answer, question);
+        return {r: room.answer(uuid, answer, question)};
     }
 
     #newRoom(configure) {

@@ -13,8 +13,10 @@ export default class Core {
         this.#game = new Game(this);
     }
 
-    cmd(...args) {
-        return this.#cmd.do(...args);
+    async cmd(...args) {
+        const result = await this.#cmd.do(...args);
+        result.r = Number(result.r) || 0;
+        return result;
     }
 
     send(uuid, cmd, data) {

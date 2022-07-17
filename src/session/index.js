@@ -7,8 +7,16 @@ export default class Session {
         this.#handle = handle;
     }
 
+    #CONNECT = 0;
+    #PING = 1;
+    #PONG = 2;
+    #MESSAGE = 3
+    #REPLY = 4;
+    #BORDERCAST = 9;
+
     #handle;
     #sessions = new Map();
+    #onPone = new Map();
 
     get online() { return this.#sessions.size }
 
@@ -32,38 +40,58 @@ export default class Session {
     async #sessionConnection(session) {
         const uuid = uuidGenerator();
         this.#sessions.set(uuid, session);
-        console.debug('[connected]', uuid);
+        const online = this.online;
+        console.debug('[Session|conn] [online:%d] [uuid:%s]', online, uuid);
         session.on('close', () => this.#sessionClose(uuid, session));
         session.on('message', message => this.#sessionMessage(uuid, message, session));
         session.on('error', error => this.#sessionError(uuid, error, session));
         const data = await this.#handle('connected', uuid);
-        const packetMessage = await this.#packet([-1, data]);
+        const packetMessage = await this.#packet([this.#CONNECT, data, online]);
         session.send(packetMessage);
     }
 
     async #sessionClose(uuid) {
-        console.debug('[closed]', uuid);
         this.#sessions.delete(uuid);
+        console.debug('[Session|clsd] [online:%d] [uuid:%s]', this.online, uuid);
         this.#handle('close', uuid);
     }
 
     async #sessionError(uuid, error) {
-        console.error('[error]', uuid.substring(0,8), error);
+        console.error('[Session|err] [suuid:] error:', uuid.substring(0,8), error);
         this.#handle('error', uuid, error);
     }
 
     async #sessionMessage(uuid, message, session) {
         const [guid, receive] = JSON.parse(message.toString());
-        console.debug('[message]', uuid.substring(0,8), receive);
+        switch(guid) {
+            case this.#PING:
+                // receive ping
+                console.debug('[Session|ping] [suuid:%s]', uuid.substring(0,8));
+                session.send(await this.#packet([this.#PONG, this.online]));
+                return;
+            case this.#PONG:
+                // receive pong
+                this.#onPone.get(uuid)?.(receive);
+                this.#onPone.delete(uuid);
+                return;
+            case this.#REPLY:
+            case this.#BORDERCAST:
+            case this.#MESSAGE:
+            default:
+                break;
+        }
+
+        console.debug('[Session|<<<<] [suuid:%s] receive:', uuid.substring(0,8), receive);
         const data = await this.#handle('message', uuid, receive);
-        const packetMessage = await this.#packet([2, guid, data]);
+        console.debug('[Session|r>>>] [suuid:%s] message:', uuid.substring(0,8), data);
+        const packetMessage = await this.#packet([guid, data]);
         session.send(packetMessage);
     }
 
     async broadcast(message) {
         if(!this.#sessions.size) return;
         this.#sessions.forEach(session => session.send(JSON.stringify([0, message])));
-        message = await this.#packet([0, message]);
+        message = await this.#packet([this.#BORDERCAST, message]);
         this.#sessions.forEach(session => session.send(message));
     }
 
@@ -71,12 +99,13 @@ export default class Session {
         if(Array.isArray(uuid)) return this.#lsend(uuid, message);
         const session = this.#sessions.get(uuid);
         if(!session) return;
-        message = await this.#packet([1, message]);
+        console.debug('[Session|s>>>] [suuid:%s] message:', uuid.substring(0,8), message);
+        message = await this.#packet([this.#MESSAGE, message]);
         session.send(message);
     }
 
     async #lsend(uuids, message) {
-        message = await this.#packet([1, message]);
+        message = await this.#packet([this.#MESSAGE, message]);
         for(const uuid of uuids) {
             const session = this.#sessions.get(uuid);
             if(!session) continue;
@@ -87,15 +116,27 @@ export default class Session {
     async close(uuid, code, reason) {
         const session = this.#sessions.get(uuid);
         if(!session) return;
+        this.#sessions.delete(uuid);
         session.close(code||0, reason||"");
+
     }
 
-    ping(uuid) {
+    async ping(uuid) {
         const session = this.#sessions.get(uuid);
-        if(session) session.ping();
-    }
-
-    __get(uuid) {
-        return this.#sessions.get(uuid);
+        if(!session) return false;
+        const data = await this.#packet([this.#PING]);
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                this.#onPone.delete(uuid);
+                console.debug('[Session|pong] [suuid:%s] timeout', uuid.substring(0,8));
+                reject(new Error('timeout'));
+            }, 15000);
+            const done = ()=>{
+                clearTimeout(timeout);
+                resolve(true);
+            };
+            this.#onPone.set(uuid, done);
+            session.send(data);
+        });
     }
 }
