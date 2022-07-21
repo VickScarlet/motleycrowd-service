@@ -14,7 +14,7 @@ console.info('[System]', 'initializing...');
 console.info('[System|database]', 'initializing...');
 const db = new Database({
     connection: {
-        host: 'scarlet-mini',
+        host: 'localhost',
         port: 27017,
         dbName: 'test',
     }
