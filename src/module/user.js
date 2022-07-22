@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import IModule from "./imodule.js";
 
 export default class User extends IModule {
@@ -26,7 +27,7 @@ export default class User extends IModule {
         if(!this.#checkUsername(username)) return { r: false, e: $err.NO_USER };
         const user = $.dbModel('user').findUser(username);
         if(!user) return { r: false, e: $err.NO_USER };
-        if(user.password !== $.passwordEncrypt(password)) return { r: false, e: $err.PASSWORD_ERROR };
+        if(user.password !== this.passwordEncrypt(password)) return { r: false, e: $err.PASSWORD_ERROR };
         const lastUUid = this.#users.get(username);
         this.#authenticated.delete(lastUUid);
         this.#users.set(username, uuid);
@@ -46,7 +47,7 @@ export default class User extends IModule {
         if(!this.#checkUsername(username)) return { r: false };
         const user = $.dbModel('user').findUser(username);
         if(user) return { r: false };
-        $.dbModel('user').createUser(username, $.passwordEncrypt(password));
+        $.dbModel('user').createUser(username, this.passwordEncrypt(password));
         this.#authenticated.set(uuid, username);
         this.#users.set(username, uuid);
         return { r: true };
@@ -75,6 +76,12 @@ export default class User extends IModule {
         const id = this.#authenticated.get(uuid);
         if(!id) return true;
         return id[0]=='#';
+    }
+
+    #passwordEncrypt(password) {
+        const sha256 = crypto.createHash('sha256').update(password).digest('hex');
+        const md5 = crypto.createHash('md5').update(password).digest('hex');
+        return crypto.createHash('sha256').update(sha256 + md5).digest('hex');
     }
 
 }

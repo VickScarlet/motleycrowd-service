@@ -7,7 +7,7 @@ export default class Core {
     #cmd;
     #game;
 
-    initialize() {
+    async initialize() {
         this.#cmd = new Commander(this)
         this.#user = new User(this);
         this.#game = new Game(this);

@@ -1,14 +1,13 @@
 import {readFile} from 'fs/promises';
 import './global.function.js';
 import errorcode from './errorcode.js';
-import API from './api/index.js';
 import Database from './database/index.js';
 import Session from './session/index.js';
-import Core from './module/core.js';
+import Core from './module/index.js';
 import Question from './question/index.js';
 
 globalThis.$err = errorcode;
-globalThis.$ = globalThis.$api = API;
+globalThis.$ = globalThis.$api = {};
 
 console.info('[System]', 'initializing...');
 console.info('[System|database]', 'initializing...');
@@ -22,11 +21,13 @@ const db = new Database({
 
 globalThis.$db = db;
 await db.initialize();
-$.registerAPI('dbModel', model => db.model(model));
+$.dbModel = model => db.model(model);
 console.info('[System|database]', 'ok.');
 
 console.info('[System|core]', 'initializing...');
-const core = new Core();
+const core = new Core({
+    
+});
 globalThis.$core = core;
 await core.initialize();
 console.info('[System|core]', 'ok.');
@@ -37,7 +38,7 @@ const question = new Question({
 });
 globalThis.$question = question;
 await question.initialize();
-$.registerAPI('randomQuestions', (...args)=>question.randomQuestions(...args));
+$.randomQuestions = (...args)=>question.randomQuestions(...args);
 console.info('[System|question]', 'ok.');
 
 console.info('[System|session]', 'initializing...');
@@ -60,9 +61,9 @@ const session = new Session({
 });
 globalThis.$session = session;
 
-$.registerAPI('close', (uuid, code, reason) => session.close(uuid, code, reason))
-$.registerAPI('send', (uuid, data) => session.send(uuid, data))
-$.registerAPI('broadcast', data => session.broadcast(data));
+$.close = (uuid, code, reason) => session.close(uuid, code, reason);
+$.send = (uuid, data) => session.send(uuid, data);
+$.broadcast = data => session.broadcast(data);
 
 session.start({
     port: 1919,

@@ -9,7 +9,6 @@ export default class Room {
     #live = new Set();
     #start = false;
     #questions = [];
-    #question = -1;
 
     get ready() {return this.#users.size == this.#limit;}
 

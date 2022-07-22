@@ -4,8 +4,8 @@ import Room from "./room.js";
 export default class Game extends IModule {
 
     #privates = new Map();
-    #randoms = new Set();
-    #randomPending = [];
+    #pairs = new Set();
+    #pairPending = [];
     #userRoom = new Map();
 
     join(uuid, roomId) {
@@ -16,22 +16,24 @@ export default class Game extends IModule {
         return {r: true, info: room.info};
     }
 
-    random(uuid) {
+    pair(uuid, type) {
+        // TODO: pair type;
+        console.debug("[Game|pair] [type:%s] [uuid:%s]", type, uuid);
         if(this.#userRoom.has(uuid)) return {r: false};
         let room;
-        if(this.#randomPending.length > 0) {
-            room = this.#randomPending[0];
+        if(this.#pairPending.length > 0) {
+            room = this.#pairPending[0];
         } else {
             room = this.#newRoom({});
-            this.#randoms.join(room);
-            this.#randomPending.push(room);
+            this.#pairs.add(room);
+            this.#pairPending.push(room);
         }
 
         room.join(uuid);
         this.#userRoom.set(uuid, [room, true]);
 
         if(room.ready) {
-            this.#randomPending.shift();
+            this.#pairPending.shift();
         }
 
         return {r: true, info: room.info};
@@ -39,17 +41,17 @@ export default class Game extends IModule {
 
     leave(uuid) {
         if(!this.#userRoom.has(uuid)) return {r: true};
-        const [room, isRandomRoom, roomId] = this.#userRoom.get(uuid)
+        const [room, isPairRoom, roomId] = this.#userRoom.get(uuid)
         this.#userRoom.delete(uuid);
         if(!room.leave(uuid)) return {r: true};
-        if(isRandomRoom) this.#randoms.delete(room);
+        if(isPairRoom) this.#pairs.delete(room);
         else this.#privates.delete(roomId);
         return {r: true};
     }
 
     create(uuid, configure) {
         if(this.#userRoom.has(uuid)) return {r: false};
-        const roomId = this.#randomId();
+        const roomId = this.#pairId();
         const room = this.#newRoom(configure);
         this.#privates.set(roomId, room);
         this.#userRoom.set(uuid, [room, false, roomId]);
@@ -67,12 +69,12 @@ export default class Game extends IModule {
         return new Room(configure);
     }
 
-    #randomId() {
+    #pairId() {
         if(this.#privates.size >= 32**5) return null;
         const id = new Array(5)
             .fill(32)
-            .map(v=>Math.floor(Math.random()*v).toString(v))
+            .map(v=>Math.floor(Math.pair()*v).toString(v))
             .join('');
-        return this.#privates.has(id) ? this.#randomId(): id;
+        return this.#privates.has(id) ? this.#pairId(): id;
     }
 }

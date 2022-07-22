@@ -9,8 +9,8 @@ commands.set('join', (uuid, {room}) => {
     return $core.game.join(uuid, room);
 });
 
-commands.set('random', (uuid) => {
-    return $core.game.random(uuid);
+commands.set('pair', (uuid, {type}) => {
+    return $core.game.pair(uuid, type);
 });
 
 commands.set('leave', (uuid) => {

@@ -26,15 +26,16 @@ export default class Session {
     }
 
     async #packet(data) {
-        data = JSON.stringify(data);
-        return data.length > 30 ? new Promise(
+        const serializeData = JSON.stringify(data);
+        if(serializeData.length < 1024) return serializeData;
+        return new Promise(
             (resolve, reject) => gzip(
-                data,
+                serializeData,
                 (error, result)=> {
                     error? reject(error): resolve(result);
                 }
             )
-        ) : data;
+        );
     }
 
     async #sessionConnection(session) {
@@ -46,7 +47,7 @@ export default class Session {
         session.on('message', message => this.#sessionMessage(uuid, message, session));
         session.on('error', error => this.#sessionError(uuid, error, session));
         const data = await this.#handle('connected', uuid);
-        const packetMessage = await this.#packet([this.#CONNECT, data, online]);
+        const packetMessage = await this.#packet([this.#CONNECT, data, [online, uuid]]);
         session.send(packetMessage);
     }
 
@@ -90,7 +91,6 @@ export default class Session {
 
     async broadcast(message) {
         if(!this.#sessions.size) return;
-        this.#sessions.forEach(session => session.send(JSON.stringify([0, message])));
         message = await this.#packet([this.#BORDERCAST, message]);
         this.#sessions.forEach(session => session.send(message));
     }
