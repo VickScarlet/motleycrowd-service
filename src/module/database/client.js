@@ -16,7 +16,11 @@ export default class Client {
     #client;
     #db;
 
-    async connect() {
+    async initialize() {
+        await this.#connect();
+    }
+
+    async #connect() {
         const uri = this.#username && this.#password
             ? `mongodb://${this.#username}:${this.#password}@${this.#host}:${this.#port}`
             : `mongodb://${this.#host}:${this.#port}`;

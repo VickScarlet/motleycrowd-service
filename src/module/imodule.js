@@ -6,7 +6,10 @@ export default class IModule {
 
     #core;
     #configure;
+    async initialize() {
+        // empty
+    }
 
-    get core() {return this.#core;}
-    get configure() {return this.#configure;}
+    get $core() { return this.#core; }
+    get $configure() { return this.#configure; }
 }

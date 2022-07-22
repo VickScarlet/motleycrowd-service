@@ -1,15 +1,17 @@
 import Client from "./client.js";
 import * as Models from "./model/index.js";
+import IModule from "../imodule.js";
 
-export default class Database {
-    constructor({connection}) {
-        this.#client = new Client(connection);
+export default class Database extends IModule {
+    constructor(...args) {
+        super(...args);
+        this.#client = new Client(this.$configure.connection);
     }
     #client;
     #models = new Map();
 
     async initialize() {
-        await this.#client.connect();
+        await this.#client.initialize();
         for(const Model of Object.values(Models)) {
             const model = new Model({client: this.#client});
             await model.initialize();
@@ -20,7 +22,5 @@ export default class Database {
     model(model) {
         return this.#models.get(model);
     }
-
-    get client() { return this.#client; }
 
 }

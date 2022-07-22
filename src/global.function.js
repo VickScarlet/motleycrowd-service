@@ -1,4 +1,4 @@
-globalThis. clone = function clone(value) {
+globalThis.clone = function clone(value) {
     if(value === null) return null;
     if(typeof value === 'object') {
         if(Array.isArray(value)) return value.map(v=>clone(v));

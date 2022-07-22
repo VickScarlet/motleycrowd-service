@@ -25,14 +25,14 @@ export default class User extends IModule {
 
     authenticate(uuid, username, password) {
         if(!this.#checkUsername(username)) return { r: false, e: $err.NO_USER };
-        const user = $.dbModel('user').findUser(username);
+        const user = this.$core.database.model('user').findUser(username);
         if(!user) return { r: false, e: $err.NO_USER };
-        if(user.password !== this.passwordEncrypt(password)) return { r: false, e: $err.PASSWORD_ERROR };
+        if(user.password !== this.#passwordEncrypt(password)) return { r: false, e: $err.PASSWORD_ERROR };
         const lastUUid = this.#users.get(username);
         this.#authenticated.delete(lastUUid);
         this.#users.set(username, uuid);
         this.#authenticated.set(uuid, username);
-        $.close(lastUUid, 3001, 'AAuth');
+        this.$core.session.close(lastUUid, 3001, 'AAuth');
         return { r: true };
     }
 
@@ -45,9 +45,9 @@ export default class User extends IModule {
 
     register(uuid, username, password) {
         if(!this.#checkUsername(username)) return { r: false };
-        const user = $.dbModel('user').findUser(username);
+        const user = this.$core.database.model('user').findUser(username);
         if(user) return { r: false };
-        $.dbModel('user').createUser(username, this.passwordEncrypt(password));
+        this.$core.database.model('user').createUser(username, this.#passwordEncrypt(password));
         this.#authenticated.set(uuid, username);
         this.#users.set(username, uuid);
         return { r: true };
@@ -55,7 +55,7 @@ export default class User extends IModule {
 
     logout(uuid) {
         const username = this.#authenticated.get(uuid);
-        this.core.game.leave(uuid);
+        this.$core.game.leave(uuid);
         this.#users.delete(username);
         this.#authenticated.delete(uuid);
         return { r: true };

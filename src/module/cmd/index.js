@@ -11,7 +11,7 @@ export default class Commander extends IModule {
         switch(ns) {
             case 'user': namespace = UserCommand; break;
             case 'game':
-                if(!this.core.user.isAuthenticated(uuid)) {
+                if(!this.$core.user.isAuthenticated(uuid)) {
                     return {r: false, e: $err.NO_AUTH};
                 }
                 namespace = GameCommand;

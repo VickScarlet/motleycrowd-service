@@ -1,12 +1,9 @@
 import { WebSocketServer } from 'ws';
 import { v4 as uuidGenerator } from 'uuid';
 import { gzip } from 'zlib';
+import IModule from "./imodule.js";
 
-export default class Session {
-    constructor({handle}) {
-        this.#handle = handle;
-    }
-
+export default class Session extends IModule {
     #CONNECT = 0;
     #PING = 1;
     #PONG = 2;
@@ -14,14 +11,14 @@ export default class Session {
     #REPLY = 4;
     #BORDERCAST = 9;
 
-    #handle;
     #sessions = new Map();
     #onPone = new Map();
 
     get online() { return this.#sessions.size }
 
-    start({port}) {
-        const wss = new WebSocketServer({host: '0.0.0.0', port});
+    async initialize() {
+        const {host, port} = this.$configure;
+        const wss = new WebSocketServer({host, port});
         wss.on('connection', session => this.#sessionConnection(session));
     }
 
@@ -46,7 +43,7 @@ export default class Session {
         session.on('close', () => this.#sessionClose(uuid, session));
         session.on('message', message => this.#sessionMessage(uuid, message, session));
         session.on('error', error => this.#sessionError(uuid, error, session));
-        const data = await this.#handle('connected', uuid);
+        const data = await this.$core.useraction('connected', uuid);
         const packetMessage = await this.#packet([this.#CONNECT, data, [online, uuid]]);
         session.send(packetMessage);
     }
@@ -54,12 +51,12 @@ export default class Session {
     async #sessionClose(uuid) {
         this.#sessions.delete(uuid);
         console.debug('[Session|clsd] [online:%d] [uuid:%s]', this.online, uuid);
-        this.#handle('close', uuid);
+        this.$core.useraction('close', uuid);
     }
 
     async #sessionError(uuid, error) {
         console.error('[Session|err] [suuid:] error:', uuid.substring(0,8), error);
-        this.#handle('error', uuid, error);
+        this.$core.useraction('error', uuid, error);
     }
 
     async #sessionMessage(uuid, message, session) {
@@ -83,7 +80,7 @@ export default class Session {
         }
 
         console.debug('[Session|<<<<] [suuid:%s] receive:', uuid.substring(0,8), receive);
-        const data = await this.#handle('message', uuid, receive);
+        const data = await this.$core.useraction('message', uuid, receive);
         console.debug('[Session|r>>>] [suuid:%s] message:', uuid.substring(0,8), data);
         const packetMessage = await this.#packet([guid, data]);
         session.send(packetMessage);
