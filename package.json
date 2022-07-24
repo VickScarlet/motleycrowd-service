@@ -1,9 +1,9 @@
 {
-  "name": "gamblerCore",
+  "name": "motleycrowd-service",
   "version": "0.0.1",
   "type": "module",
   "main": "src/index.js",
-  "repository": "https://github.com/VickScarlet/gamblerCore.git",
+  "repository": "https://github.com/VickScarlet/motleycrowd-service.git",
   "author": "Vick Scarlet <scarlet_vick@outlook.com>",
   "license": "AGPL-3.0",
   "scripts": {

@@ -1,5 +1,5 @@
 apps:
-  - name: gamblerCore
+  - name: motleycrowd-service
     script: pnpm start
     watch: true
     env:
