@@ -23,9 +23,9 @@ export default class User extends IModule {
         return this.#authenticated.has(uuid);
     }
 
-    authenticate(uuid, username, password) {
+    async authenticate(uuid, username, password) {
         if(!this.#checkUsername(username)) return { r: false, e: $err.NO_USER };
-        const user = this.$core.database.model('user').findUser(username);
+        const user = await this.$core.database.user.findUserByUsername(username);
         if(!user) return { r: false, e: $err.NO_USER };
         if(user.password !== this.#passwordEncrypt(password)) return { r: false, e: $err.PASSWORD_ERROR };
         const lastUUid = this.#users.get(username);
@@ -43,11 +43,11 @@ export default class User extends IModule {
         return { r: true };
     }
 
-    register(uuid, username, password) {
+    async register(uuid, username, password) {
         if(!this.#checkUsername(username)) return { r: false };
-        const user = this.$core.database.model('user').findUser(username);
+        const user = await this.$core.database.user.findUserByUsername(username);
         if(user) return { r: false };
-        this.$core.database.model('user').createUser(username, this.#passwordEncrypt(password));
+        await this.$core.database.user.create(username, this.#passwordEncrypt(password));
         this.#authenticated.set(uuid, username);
         this.#users.set(username, uuid);
         return { r: true };

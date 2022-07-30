@@ -51,7 +51,7 @@ export default class Game extends IModule {
 
     create(uuid, configure) {
         if(this.#userRoom.has(uuid)) return {r: false};
-        const roomId = this.#pairId();
+        const roomId = this.#roomId();
         const room = this.#newRoom(configure);
         this.#privates.set(roomId, room);
         this.#userRoom.set(uuid, [room, false, roomId]);
@@ -69,12 +69,12 @@ export default class Game extends IModule {
         return new Room(configure);
     }
 
-    #pairId() {
+    #roomId() {
         if(this.#privates.size >= 32**5) return null;
         const id = new Array(5)
             .fill(32)
             .map(v=>Math.floor(Math.pair()*v).toString(v))
             .join('');
-        return this.#privates.has(id) ? this.#pairId(): id;
+        return this.#privates.has(id) ? this.#roomId(): id;
     }
 }

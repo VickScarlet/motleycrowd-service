@@ -20,6 +20,7 @@ export default class Session extends IModule {
         const {host, port} = this.$configure;
         const wss = new WebSocketServer({host, port});
         wss.on('connection', session => this.#sessionConnection(session));
+        console.debug('[Session|init] listen at %s:%d', host, port);
     }
 
     async #packet(data) {

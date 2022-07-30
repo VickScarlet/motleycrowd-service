@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "log4js": "^6.6.0",
-    "mongodb": "^4.5.0",
+    "mongoose": "^6.5.0",
     "uuid": "^8.3.2",
     "ws": "^8.6.0"
   },

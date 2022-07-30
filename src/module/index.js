@@ -3,14 +3,28 @@ import User from './user.js';
 import Game from './game/index.js';
 import Commander from './cmd/index.js';
 import Session from './session.js';
+import process from 'process';
 
 export default class Core {
     constructor({database, user, game, commander, session}) {
+
         this.#database = new Database(this, database);
         this.#user = new User(this, user);
         this.#game = new Game(this, game);
         this.#commander = new Commander(this, commander);
         this.#session = new Session(this, session);
+        
+        process.on('SIGINT', async ()=>{
+            console.info('[System] recived SIGINT');
+            console.info('[System]', 'shutdowning...');
+            await this.shutdown();
+            console.info('[System]', 'shutdowned.');
+            process.exit(0);
+        });
+
+        process.on('exit', ()=>{
+            console.info('[System]', 'bye.');
+        });
     }
 
     #database;
@@ -31,6 +45,11 @@ export default class Core {
         await this.#user.initialize();
         await this.#game.initialize();
         await this.#session.initialize();
+    }
+
+    async shutdown() {
+        // TODO: shutdown
+        console.info('[System]', 'do shutdown...');
     }
 
     async cmd(...args) {
@@ -57,6 +76,16 @@ export default class Core {
             default:
                 return;
         }
+    }
+
+    get state() {
+        const { title, pid, platform } = process;
+        const { online } = this.#session;
+        return {
+            title, pid, platform,
+            memory: process.memoryUsage(),
+            session: { online },
+        };
     }
 
 

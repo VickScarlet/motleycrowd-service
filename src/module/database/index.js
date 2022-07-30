@@ -1,26 +1,30 @@
-import Client from "./client.js";
-import * as Models from "./model/index.js";
-import IModule from "../imodule.js";
+import IModule from '../imodule.js';
+import mongoose from 'mongoose';
+import KVData from './model/KVData.js';
+import User from './model/User.js';
+import Game from './model/Game.js';
+import Score from './model/Score.js';
 
 export default class Database extends IModule {
-    constructor(...args) {
-        super(...args);
-        this.#client = new Client(this.$configure.connection);
-    }
-    #client;
-    #models = new Map();
+    #kvdata;
+    #user;
+    #game;
+    #score;
+    get kvdata() { return this.#kvdata; }
+    get user() { return this.#user; }
+    get game() { return this.#game; }
+    get score() { return this.#score; }
 
     async initialize() {
-        await this.#client.initialize();
-        for(const Model of Object.values(Models)) {
-            const model = new Model({client: this.#client});
-            await model.initialize();
-            this.#models.set(Model.model, model);
-        }
-    }
+        const {host, port, dbName, username, password, model: mc} = this.$configure;
+        await mongoose.connect(`mongodb://${host}:${port}`, {
+            dbName, username, password,
+        });
 
-    model(model) {
-        return this.#models.get(model);
+        const {Schema, model} = mongoose;
+        this.#kvdata = new KVData(Schema, model, mc.KVData);
+        this.#user = new User(Schema, model, mc.User);
+        this.#game = new Game(Schema, model, mc.Game);
+        this.#score = new Score(Schema, model, mc.Score);
     }
-
 }

@@ -64,6 +64,7 @@ export default class Room {
         const question = this.#questions.next();
         if(!question) {
             // TODO: 完成
+            $core.send(Array.from(this.#live), 'question', question.id);
             return;
         }
         $core.send(Array.from(this.#live), 'question', question.id);

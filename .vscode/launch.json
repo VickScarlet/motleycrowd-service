@@ -5,22 +5,31 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "pwa-node",
+            "type": "node",
             "request": "launch",
             "name": "main process",
             "skipFiles": [
                 "<node_internals>/**"
             ],
             "program": "${workspaceFolder}/src/index.js"
-        }
+        },
         {
-            "name": "test",
-            "program": "${workspaceFolder}/test/answer.js",
+            "type": "node",
             "request": "launch",
+            "name": "test answer",
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "type": "node"
+            "program": "${workspaceFolder}/test/answer.js"
         },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "test database",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/test/database.js"
+        }
     ]
 }
