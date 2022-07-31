@@ -1,3 +1,7 @@
+/**
+ * 用户数据模型
+ * @class User
+ */
 export default class User {
     constructor(Schema, model, {collection}={}) {
         this.#schema = new Schema({
@@ -15,12 +19,13 @@ export default class User {
     }
     #schema;
     #model;
-    
+
     async create(uid, username, password) {
         const user = new this.#model({
             uid,
             username,
             password,
+            email: uid
         });
         return user.save();
     }

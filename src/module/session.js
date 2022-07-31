@@ -37,41 +37,41 @@ export default class Session extends IModule {
     }
 
     async #sessionConnection(session) {
-        const uuid = uuidGenerator();
-        this.#sessions.set(uuid, session);
+        const sid = uuidGenerator();
+        this.#sessions.set(sid, session);
         const online = this.online;
-        console.debug('[Session|conn] [online:%d] [uuid:%s]', online, uuid);
-        session.on('close', () => this.#sessionClose(uuid, session));
-        session.on('message', message => this.#sessionMessage(uuid, message, session));
-        session.on('error', error => this.#sessionError(uuid, error, session));
-        const data = await this.$core.useraction('connected', uuid);
-        const packetMessage = await this.#packet([this.#CONNECT, data, [online, uuid]]);
+        console.debug('[Session|conn] [online:%d] [sid:%s]', online, sid);
+        session.on('close', () => this.#sessionClose(sid, session));
+        session.on('message', message => this.#sessionMessage(sid, message, session));
+        session.on('error', error => this.#sessionError(sid, error, session));
+        const data = await this.$core.useraction('connected', sid);
+        const packetMessage = await this.#packet([this.#CONNECT, data, [online, sid]]);
         session.send(packetMessage);
     }
 
-    async #sessionClose(uuid) {
-        this.#sessions.delete(uuid);
-        console.debug('[Session|clsd] [online:%d] [uuid:%s]', this.online, uuid);
-        this.$core.useraction('close', uuid);
+    async #sessionClose(sid) {
+        this.#sessions.delete(sid);
+        console.debug('[Session|clsd] [online:%d] [sid:%s]', this.online, sid);
+        this.$core.useraction('close', sid);
     }
 
-    async #sessionError(uuid, error) {
-        console.error('[Session|err] [suuid:] error:', uuid.substring(0,8), error);
-        this.$core.useraction('error', uuid, error);
+    async #sessionError(sid, error) {
+        console.error('[Session|err] [ssid:] error:', sid.substring(0,8), error);
+        this.$core.useraction('error', sid, error);
     }
 
-    async #sessionMessage(uuid, message, session) {
+    async #sessionMessage(sid, message, session) {
         const [guid, receive] = JSON.parse(message.toString());
         switch(guid) {
             case this.#PING:
                 // receive ping
-                console.debug('[Session|ping] [suuid:%s]', uuid.substring(0,8));
+                console.debug('[Session|ping] [ssid:%s]', sid.substring(0,8));
                 session.send(await this.#packet([this.#PONG, this.online]));
                 return;
             case this.#PONG:
                 // receive pong
-                this.#onPone.get(uuid)?.(receive);
-                this.#onPone.delete(uuid);
+                this.#onPone.get(sid)?.(receive);
+                this.#onPone.delete(sid);
                 return;
             case this.#REPLY:
             case this.#BORDERCAST:
@@ -80,9 +80,9 @@ export default class Session extends IModule {
                 break;
         }
 
-        console.debug('[Session|<<<<] [suuid:%s] receive:', uuid.substring(0,8), receive);
-        const data = await this.$core.useraction('message', uuid, receive);
-        console.debug('[Session|r>>>] [suuid:%s] message:', uuid.substring(0,8), data);
+        console.debug('[Session|<<<<] [ssid:%s] receive:', sid.substring(0,8), receive);
+        const data = await this.$core.useraction('message', sid, receive);
+        console.debug('[Session|r>>>] [ssid:%s] message:', sid.substring(0,8), data);
         const packetMessage = await this.#packet([guid, data]);
         session.send(packetMessage);
     }
@@ -93,47 +93,47 @@ export default class Session extends IModule {
         this.#sessions.forEach(session => session.send(message));
     }
 
-    async send(uuid, message) {
-        if(Array.isArray(uuid)) return this.#lsend(uuid, message);
-        const session = this.#sessions.get(uuid);
+    async send(sid, message) {
+        if(Array.isArray(sid)) return this.#lsend(sid, message);
+        const session = this.#sessions.get(sid);
         if(!session) return;
-        console.debug('[Session|s>>>] [suuid:%s] message:', uuid.substring(0,8), message);
+        console.debug('[Session|s>>>] [ssid:%s] message:', sid.substring(0,8), message);
         message = await this.#packet([this.#MESSAGE, message]);
         session.send(message);
     }
 
-    async #lsend(uuids, message) {
+    async #lsend(sids, message) {
         message = await this.#packet([this.#MESSAGE, message]);
-        for(const uuid of uuids) {
-            const session = this.#sessions.get(uuid);
+        for(const sid of sids) {
+            const session = this.#sessions.get(sid);
             if(!session) continue;
             session.send(message);
         }
     }
 
-    async close(uuid, code, reason) {
-        const session = this.#sessions.get(uuid);
+    async close(sid, code, reason) {
+        const session = this.#sessions.get(sid);
         if(!session) return;
-        this.#sessions.delete(uuid);
-        session.close(code||0, reason||"");
+        this.#sessions.delete(sid);
+        session.close(code||3000, reason||"");
 
     }
 
-    async ping(uuid) {
-        const session = this.#sessions.get(uuid);
+    async ping(sid) {
+        const session = this.#sessions.get(sid);
         if(!session) return false;
         const data = await this.#packet([this.#PING]);
         return new Promise((resolve, reject) => {
             const timeout = setTimeout(() => {
-                this.#onPone.delete(uuid);
-                console.debug('[Session|pong] [suuid:%s] timeout', uuid.substring(0,8));
+                this.#onPone.delete(sid);
+                console.debug('[Session|pong] [ssid:%s] timeout', sid.substring(0,8));
                 reject(new Error('timeout'));
             }, 15000);
             const done = ()=>{
                 clearTimeout(timeout);
                 resolve(true);
             };
-            this.#onPone.set(uuid, done);
+            this.#onPone.set(sid, done);
             session.send(data);
         });
     }

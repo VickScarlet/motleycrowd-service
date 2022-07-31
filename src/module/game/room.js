@@ -14,16 +14,16 @@ export default class Room {
 
     get info() {
         return {
-            users: Array.from(this.#users).map(uuid=>$core.user.username(uuid)),
+            users: Array.from(this.#users).map(uid=>$core.user.username(uid)),
             limit: this.#limit,
         };
     }
 
-    join(uuid) {
+    join(uid) {
         if(this.ready) return false;
-        $core.send(Array.from(this.#live), 'join', $core.user.username(uuid));
-        this.#users.add(uuid);
-        this.#live.add(uuid);
+        $core.send(Array.from(this.#live), 'join', $core.user.username(uid));
+        this.#users.add(uid);
+        this.#live.add(uid);
         if(this.ready)
             setTimeout(()=>{
                 if(!this.ready) return;
@@ -35,21 +35,21 @@ export default class Room {
         return true;
     }
 
-    leave(uuid) {
-        this.#live.delete(uuid);
-        $core.send(Array.from(this.#live), 'leave', $core.user.username(uuid));
+    leave(uid) {
+        this.#live.delete(uid);
+        $core.send(Array.from(this.#live), 'leave', $core.user.username(uid));
         if(this.#live.size == 0) {
             // TODO: 没人了
         }
         if(this.#start) return this.#live.size;
-        this.#users.delete(uuid);
+        this.#users.delete(uid);
         return this.#users.size;
     }
 
-    answer(uuid, answer, question) {
+    answer(uid, answer, question) {
         if(!this.#start) return false;
-        if(this.#questions.has(uuid) || question != this.#questions.id) return false;
-        this.#questions.answer(uuid, answer);
+        if(this.#questions.has(uid) || question != this.#questions.id) return false;
+        this.#questions.answer(uid, answer);
         if(this.#questions.answerSize != this.#live.size) {
             $core.send(Array.from(this.#live), 'answer', this.#questions.answerSize);
             return true;

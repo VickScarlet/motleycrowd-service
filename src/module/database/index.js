@@ -5,6 +5,11 @@ import User from './model/User.js';
 import Game from './model/Game.js';
 import Score from './model/Score.js';
 
+/**
+ * 数据库模块
+ * @class Database
+ * @extends IModule
+ */
 export default class Database extends IModule {
     #kvdata;
     #user;
@@ -26,5 +31,9 @@ export default class Database extends IModule {
         this.#user = new User(Schema, model, mc.User);
         this.#game = new Game(Schema, model, mc.Game);
         this.#score = new Score(Schema, model, mc.Score);
+    }
+
+    async shutdown() {
+        return mongoose.disconnect();
     }
 }

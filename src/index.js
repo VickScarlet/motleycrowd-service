@@ -25,7 +25,7 @@ const core = new Core({
     database: {
         host: '127.0.0.1',
         port: 27017,
-        dbName: 'test',
+        dbName: 'test-motleycrowd',
         model: {
             KVData: {
                 collection: 'kvdata',
@@ -45,7 +45,9 @@ const core = new Core({
         host: '::',
         port: 1919,
     },
-    user: {},
+    user: {
+        authLimit: 5000,
+    },
     game: {
         pair: {
             10: {
@@ -56,7 +58,6 @@ const core = new Core({
             }
         }
     },
-    commander: {},
 });
 globalThis.$core = core;
 await core.initialize();

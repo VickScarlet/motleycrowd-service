@@ -1,24 +1,25 @@
 import Database from './database/index.js';
 import User from './user.js';
 import Game from './game/index.js';
-import Commander from './cmd/index.js';
 import Session from './session.js';
 import process from 'process';
 
+/**
+ * 核心模块
+ * @class Core
+ * @constructor [{database, user, game, session}]
+ */
 export default class Core {
-    constructor({database, user, game, commander, session}) {
+    constructor({database, user, game, session}) {
 
         this.#database = new Database(this, database);
         this.#user = new User(this, user);
         this.#game = new Game(this, game);
-        this.#commander = new Commander(this, commander);
         this.#session = new Session(this, session);
         
         process.on('SIGINT', async ()=>{
             console.info('[System] recived SIGINT');
-            console.info('[System]', 'shutdowning...');
             await this.shutdown();
-            console.info('[System]', 'shutdowned.');
             process.exit(0);
         });
 
@@ -27,39 +28,66 @@ export default class Core {
         });
     }
 
+    #proxy = new Map();
+    #proxyR = new Set();
     #database;
     #user;
     #game;
-    #commander;
     #session;
 
     get database() { return this.#database; }
     get user() { return this.#user; }
     get game() { return this.#game; }
-    get commander() { return this.#commander; }
     get session() { return this.#session; }
+
+    proxy(proxy, cmds, requestSid) {
+        if(this.#proxy.has(proxy)) {
+            console.info('[System] proxy <%s> %s', proxy, 'already exists.');
+            return;
+        }
+        const map = new Map();
+        for(const cmd in cmds) 
+            map.set(cmd, cmds[cmd]);
+        this.#proxy.set(proxy, map);
+        if(requestSid) this.#proxyR.add(proxy);
+    }
 
     async initialize() {
         await this.#database.initialize();
-        await this.#commander.initialize();
         await this.#user.initialize();
         await this.#game.initialize();
         await this.#session.initialize();
     }
 
     async shutdown() {
-        // TODO: shutdown
-        console.info('[System]', 'do shutdown...');
+        console.info('[System]', 'shutdowning...');
+        await this.#session.shutdown();
+        await this.#game.shutdown();
+        await this.#user.shutdown();
+        await this.#database.shutdown();
+        console.info('[System]', 'shutdowned.');
     }
 
-    async cmd(...args) {
-        const result = await this.#commander.do(...args);
+    async cmd(sid, {c, d}) {
+        if(!c) return { r: 0, e: $err.NO_CMD };
+        const [p, cmd] = c.split(".");
+        const proxy = this.#proxy.get(p);
+        if(!proxy || !proxy.has(cmd))
+            return { r: 0, e: $err.NO_CMD };
+        let mark = sid;
+        if(!this.#proxyR.has(p)) {
+            if(!this.#user.isAuthenticated(sid)) return { r: 0, e: $err.NO_AUTH };
+            mark = this.#user.uid(sid);
+        }
+        const result = await proxy.get(cmd)(mark, d);
         result.r = Number(result.r) || 0;
         return result;
     }
 
-    send(uuid, cmd, data) {
-        return this.#session.send(uuid, {c: cmd, d: data});
+    send(uid, cmd, data) {
+        const sid = this.#user.sid(uid);
+        if(!sid) return;
+        return this.#session.send(sid, {c: cmd, d: data});
     }
 
     useraction(type, ...args) {
@@ -71,7 +99,7 @@ export default class Core {
             case 'message':
                 return this.cmd(...args);
             case 'close':
-                return this.user.logout(args[0]);
+                return this.user.leave(args[0]);
             case 'error':
             default:
                 return;
@@ -87,6 +115,5 @@ export default class Core {
             session: { online },
         };
     }
-
 
 }

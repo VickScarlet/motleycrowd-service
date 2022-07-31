@@ -1,3 +1,7 @@
+/**
+ * 比分数据模型
+ * @class Score
+ */
 export default class Score {
     constructor(Schema, model, {collection}={}) {
         this.#schema = new Schema({
@@ -16,15 +20,11 @@ export default class Score {
     }
 
     async set(uid, score) {
-        const data = await this.#model.findOne({uid});
-        if (data) {
-            data.score = score;
-            return data.save();
-        }
-        return new this.#model({uid, score}).save();
+        return this.#model.updateOne({uid}, {score}, {upsert: true});
     }
 
     async sortedList() {
-        return this.#model.find().sort({score: -1});
+        const list = await this.#model.find().sort({score: -1});
+        return list.map(({uid, score}) => ({uid, score}));
     }
 }

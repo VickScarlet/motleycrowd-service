@@ -8,18 +8,28 @@ export default class Game extends IModule {
     #pairPending = [];
     #userRoom = new Map();
 
-    join(uuid, roomId) {
+    initialize() { 
+        this.$core.proxy('game', {
+            create: (uid, configure) => $core.game.create(uid, configure),
+            join: (uid, {room}) => $core.game.join(uid, room),
+            pair: (uid, {type}) => $core.game.pair(uid, type),
+            leave: uid => $core.game.leave(uid),
+            answer: (uid, {answer, question}) => $core.game.answer(uid, answer, question),
+        });
+    }
+
+    join(uid, roomId) {
         if(!this.#privates.has(roomId)) return {r: false};
         const room = this.#privates.get(roomId);
-        room.join(uuid);
-        this.#userRoom.set(uuid, [room, false, roomId]);
+        room.join(uid);
+        this.#userRoom.set(uid, [room, false, roomId]);
         return {r: true, info: room.info};
     }
 
-    pair(uuid, type) {
+    pair(uid, type) {
         // TODO: pair type;
-        console.debug("[Game|pair] [type:%s] [uuid:%s]", type, uuid);
-        if(this.#userRoom.has(uuid)) return {r: false};
+        console.debug("[Game|pair] [type:%s] [uid:%s]", type, uid);
+        if(this.#userRoom.has(uid)) return {r: false};
         let room;
         if(this.#pairPending.length > 0) {
             room = this.#pairPending[0];
@@ -29,8 +39,8 @@ export default class Game extends IModule {
             this.#pairPending.push(room);
         }
 
-        room.join(uuid);
-        this.#userRoom.set(uuid, [room, true]);
+        room.join(uid);
+        this.#userRoom.set(uid, [room, true]);
 
         if(room.ready) {
             this.#pairPending.shift();
@@ -39,30 +49,30 @@ export default class Game extends IModule {
         return {r: true, info: room.info};
     }
 
-    leave(uuid) {
-        if(!this.#userRoom.has(uuid)) return {r: true};
-        const [room, isPairRoom, roomId] = this.#userRoom.get(uuid)
-        this.#userRoom.delete(uuid);
-        if(!room.leave(uuid)) return {r: true};
+    leave(uid) {
+        if(!this.#userRoom.has(uid)) return {r: true};
+        const [room, isPairRoom, roomId] = this.#userRoom.get(uid)
+        this.#userRoom.delete(uid);
+        if(!room.leave(uid)) return {r: true};
         if(isPairRoom) this.#pairs.delete(room);
         else this.#privates.delete(roomId);
         return {r: true};
     }
 
-    create(uuid, configure) {
-        if(this.#userRoom.has(uuid)) return {r: false};
+    create(uid, configure) {
+        if(this.#userRoom.has(uid)) return {r: false};
         const roomId = this.#roomId();
         const room = this.#newRoom(configure);
         this.#privates.set(roomId, room);
-        this.#userRoom.set(uuid, [room, false, roomId]);
-        room.join(uuid);
+        this.#userRoom.set(uid, [room, false, roomId]);
+        room.join(uid);
         return {r: true, room: roomId};
     }
 
-    answer(uuid, answer, question) {
-        if(!this.#userRoom.has(uuid)) return {r: false};
-        const [room] = this.#userRoom.get(uuid);
-        return {r: room.answer(uuid, answer, question)};
+    answer(uid, answer, question) {
+        if(!this.#userRoom.has(uid)) return {r: false};
+        const [room] = this.#userRoom.get(uid);
+        return {r: room.answer(uid, answer, question)};
     }
 
     #newRoom(configure) {

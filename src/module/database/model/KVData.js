@@ -1,3 +1,7 @@
+/**
+ * 键值对数据模型
+ * @class KVData
+ */
 export default class KVData {
     constructor(Schema, model, {collection}={}) {
         this.#schema = new Schema({
@@ -15,11 +19,6 @@ export default class KVData {
     }
 
     async set(key, value) {
-        const kv = await this.#model.findOne({key});
-        if (kv) {
-            kv.value = value;
-            return kv.save();
-        }
-        return new this.#model({key, value}).save();
+        return this.#model.updateOne({key}, {value}, {upsert: true});
     }
 }
