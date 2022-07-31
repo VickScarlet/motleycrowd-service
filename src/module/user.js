@@ -21,10 +21,10 @@ export default class User extends IModule {
     async initialize() {
         this.#registerCount = await this.$core.database.kvdata.get('register') || 0;
         this.$core.proxy('user', {
-            register: (sid, {username, password}) => $core.user.register(sid, username, password),
-            authenticate: (sid, {username, password}) => $core.user.authenticate(sid, username, password),
-            guest: sid => $core.user.guest(sid),
-            logout: sid => $core.user.logout(sid),
+            register: (sid, {username, password}) => this.register(sid, username, password),
+            authenticate: (sid, {username, password}) => this.authenticate(sid, username, password),
+            guest: sid => this.guest(sid),
+            logout: sid => this.logout(sid),
         }, true);
     }
 

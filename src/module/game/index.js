@@ -10,11 +10,11 @@ export default class Game extends IModule {
 
     initialize() {
         this.$core.proxy('game', {
-            create: (uid, configure) => $core.game.create(uid, configure),
-            join: (uid, {room}) => $core.game.join(uid, room),
-            pair: (uid, {type}) => $core.game.pair(uid, type),
-            leave: uid => $core.game.leave(uid),
-            answer: (uid, {answer, question}) => $core.game.answer(uid, answer, question),
+            create: (uid, configure) => this.create(uid, configure),
+            join: (uid, {room}) => this.join(uid, room),
+            pair: (uid, {type}) => this.pair(uid, type),
+            leave: uid => this.leave(uid),
+            answer: (uid, {answer, question}) => this.answer(uid, answer, question),
         });
     }
 
@@ -28,7 +28,7 @@ export default class Game extends IModule {
 
     pair(uid, type) {
         // TODO: pair type;
-        console.debug("[Game|pair] [type:%s] [uid:%s]", type, uid);
+        // logger.debug("[Game|pair] [type:%s] [uid:%s]", type, uid);
         if(this.#userRoom.has(uid)) return {r: false};
         let room;
         if(this.#pairPending.length > 0) {
