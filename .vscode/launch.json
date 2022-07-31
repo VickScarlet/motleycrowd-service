@@ -16,6 +16,15 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "test",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/node_modules/mocha/bin/mocha.js"
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "test answer",
             "skipFiles": [
                 "<node_internals>/**"

@@ -1,17 +1,17 @@
-import Answer from "../src/question/answer.js";
+import Answer from "../src/module/question/answer.js";
 // debugger
-const answers = ['A','B','C','D'];
-const answer = new Answer({answers});
-const randomAnswer = ()=>answer.answer(
-    Math.floor(Math.random()*Date.now()).toString(32),
-    answers[Math.floor(Math.random() * answers.length)]
-);
+// const answers = ['A','B','C','D'];
+// const answer = new Answer({answers});
+// const randomAnswer = ()=>answer.answer(
+//     Math.floor(Math.random()*Date.now()).toString(32),
+//     answers[Math.floor(Math.random() * answers.length)]
+// );
 
-let times = 100;
-while(times--) randomAnswer();
-console.debug(answer.counter);
-console.debug(answer.crank());
-const scores = {};
+// let times = 100;
+// while(times--) randomAnswer();
+// console.debug(answer.counter);
+// console.debug(answer.crank());
+// const scores = {};
 
 // scores.A = {s: 1};
 // scores.B = {s: 20 / answer.count('B')};
@@ -90,21 +90,21 @@ const scores = {};
 // scores.D = {s: answer.most('D')?-1:3};
 // scores.E = {s: answer.most('E')?-1:4};
 
-scores.A = {s: answer.most('A')?0:1};
-scores.B = {s: answer.most('B')?0:2};
-scores.C = {s: answer.most('C')?0:3};
-scores.D = {s: answer.most('D')?0:4};
+// scores.A = {s: answer.most('A')?0:1};
+// scores.B = {s: answer.most('B')?0:2};
+// scores.C = {s: answer.most('C')?0:3};
+// scores.D = {s: answer.most('D')?0:4};
 
-console.debug(scores);
+// console.debug(scores);
 
-const questions = $question.randomQuestions();
-const test = (question, count=100)=>{
-    const randomAnswer = question=>{
-        const options = Object.keys(question.options);
-        return question.answer(
-            Math.floor(Math.random()*Date.now()).toString(32),
-            options[Math.floor(Math.random() * options.length)]
-        )
-    };
-    while(count--) randomAnswer(question);
-}
+// const questions = $question.randomQuestions();
+// const test = (question, count=100)=>{
+//     const randomAnswer = question=>{
+//         const options = Object.keys(question.options);
+//         return question.answer(
+//             Math.floor(Math.random()*Date.now()).toString(32),
+//             options[Math.floor(Math.random() * options.length)]
+//         )
+//     };
+//     while(count--) randomAnswer(question);
+// }

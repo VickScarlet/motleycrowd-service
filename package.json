@@ -6,11 +6,12 @@
   "repository": "https://github.com/VickScarlet/motleycrowd-service.git",
   "author": "Vick Scarlet <scarlet_vick@outlook.com>",
   "license": "AGPL-3.0",
-  "engines" : {
-    "node" : ">=17.5.0"
+  "engines": {
+    "node": ">=17.5.0"
   },
   "scripts": {
     "start": "node .",
+    "test": "mocha",
     "xlsx2json": "vt transform data/questions.xlsx"
   },
   "dependencies": {
@@ -20,6 +21,7 @@
     "ws": "^8.6.0"
   },
   "devDependencies": {
+    "mocha": "^10.0.0",
     "v-transform": "^1.0.5"
   }
 }
