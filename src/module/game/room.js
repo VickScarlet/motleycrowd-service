@@ -28,7 +28,7 @@ export default class Room {
             setTimeout(()=>{
                 if(!this.ready) return;
                 this.#start = true;
-                this.#questions = $.randomQuestions(this.#users);
+                this.#questions = this.$core.question.random(this.#users);
                 this.#next();
             }, this.#startWait);
 

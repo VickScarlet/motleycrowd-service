@@ -8,7 +8,7 @@ export default class Game extends IModule {
     #pairPending = [];
     #userRoom = new Map();
 
-    initialize() { 
+    initialize() {
         this.$core.proxy('game', {
             create: (uid, configure) => $core.game.create(uid, configure),
             join: (uid, {room}) => $core.game.join(uid, room),

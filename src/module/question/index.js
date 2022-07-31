@@ -1,13 +1,12 @@
+import IModule from '../imodule.js';
 import {Question, Questions} from './question.js';
+import questionsData from '../../../data/questions.json' assert { type: 'json' };
 
-export default class QuestionHelper {
-    constructor({questions}) {
-        this.#data = questions;
-    }
+export default class QuestionHelper extends IModule {
 
     #data;
     async initialize() {
-        // empty
+        this.#data = questionsData;
     }
 
     info(question) {
@@ -16,7 +15,7 @@ export default class QuestionHelper {
         return new Question(data);
     }
 
-    randomQuestions(users) {
+    random(users) {
         const questions = ['q1001', 'q1002', 'q1003', 'q1004', 'q1005']
             .map(question => this.#data[question]);
         return new Questions({questions, users});

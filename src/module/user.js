@@ -18,7 +18,7 @@ export default class User extends IModule {
         return this.#registerCount;
     }
 
-    async initialize() { 
+    async initialize() {
         this.#registerCount = await this.$core.database.kvdata.get('register') || 0;
         this.$core.proxy('user', {
             register: (sid, {username, password}) => $core.user.register(sid, username, password),
@@ -34,11 +34,11 @@ export default class User extends IModule {
 
     async authenticate(sid, username, password) {
         // check username
-        if(!this.#checkUsername(username)) return { r: false, e: $err.NO_USER };
+        if(!this.#checkUsername(username)) return { r: false, e: this.$err.NO_USER };
 
         // AUTH LIMIT
-        if(this.#lock.has(sid) || this.#lock.has(username)) 
-            return { r: false, e: $err.AUTH_LIMIT };
+        if(this.#lock.has(sid) || this.#lock.has(username))
+            return { r: false, e: this.$err.AUTH_LIMIT };
         this.#lock.add(sid);
         this.#lock.add(username);
         setTimeout(() => {
@@ -50,11 +50,11 @@ export default class User extends IModule {
         // query db
         const model = await this.$core.database.user.findUserByUsername(username);
         // not found
-        if(!model) return { r: false, e: $err.NO_USER };
+        if(!model) return { r: false, e: this.$err.NO_USER };
         // founded
         const {uid} = model;
         // check password
-        if(model.password !== this.#passwordEncrypt(password)) return { r: false, e: $err.PASSWORD_ERROR };
+        if(model.password !== this.#passwordEncrypt(password)) return { r: false, e: this.$err.PASSWORD_ERROR };
         // last session
         const lastSid = this.#users.get(uid);
         // kick last session
@@ -78,15 +78,15 @@ export default class User extends IModule {
         if(!this.#checkUsername(username)) return { r: false };
 
         // AUTH LIMIT
-        if(this.#lock.has(sid)) return { r: false, e: $err.AUTH_LIMIT };
+        if(this.#lock.has(sid)) return { r: false, e: this.$err.AUTH_LIMIT };
         this.#lock.add(sid);
         setTimeout(() => this.#lock.delete(sid), this.$configure.authLimit);
         // AUTH LIMIT
 
         // check exist
-        if(await this.$core.database.user.findUserByUsername(username)) 
+        if(await this.$core.database.user.findUserByUsername(username))
             return { r: false };
-        
+
         // register
         const uid = (46656 + ++this.#registerCount).toString(36); // uid by register count
         await this.$core.database.kvdata.set('register', this.#registerCount);

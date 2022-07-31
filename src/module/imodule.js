@@ -1,3 +1,4 @@
+import ErrorCode from './errorcode.js';
 /**
  * 核心模块接口
  * @interface IModule
@@ -7,15 +8,21 @@
  * @property {function} shutdown 关闭模块方法
  * @property {object} $core 获取父级模块
  * @property {object} $configure 获取配置信息
+ * @property {object} $err 获取错误码
  */
 export default class IModule {
     constructor(core, configure = {}) {
-        this.#core = core;
-        this.#configure = configure;
+        this.#$core = core;
+        this.#$configure = configure;
     }
 
-    #core;
-    #configure;
+    #$core;
+    #$configure;
+
+    get $err() {return ErrorCode;}
+    get $core() { return this.#$core; }
+    get $configure() { return this.#$configure; }
+
     async initialize() {
         // empty
     }
@@ -24,6 +31,4 @@ export default class IModule {
         // empty
     }
 
-    get $core() { return this.#core; }
-    get $configure() { return this.#configure; }
 }

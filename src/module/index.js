@@ -1,4 +1,6 @@
+import ErrorCode from './errorcode.js';
 import Database from './database/index.js';
+import Question from './question/index.js';
 import User from './user.js';
 import Game from './game/index.js';
 import Session from './session.js';
@@ -10,13 +12,15 @@ import process from 'process';
  * @constructor [{database, user, game, session}]
  */
 export default class Core {
-    constructor({database, user, game, session}) {
+    constructor({database, question, user, game, session}) {
 
         this.#database = new Database(this, database);
+        this.#question = new Question(this, question);
         this.#user = new User(this, user);
         this.#game = new Game(this, game);
         this.#session = new Session(this, session);
-        
+
+        process.title = 'Metley Crowd Service';
         process.on('SIGINT', async ()=>{
             console.info('[System] recived SIGINT');
             await this.shutdown();
@@ -31,10 +35,12 @@ export default class Core {
     #proxy = new Map();
     #proxyR = new Set();
     #database;
+    #question;
     #user;
     #game;
     #session;
 
+    get $err() {return ErrorCode;}
     get database() { return this.#database; }
     get user() { return this.#user; }
     get game() { return this.#game; }
@@ -46,17 +52,21 @@ export default class Core {
             return;
         }
         const map = new Map();
-        for(const cmd in cmds) 
+        for(const cmd in cmds)
             map.set(cmd, cmds[cmd]);
         this.#proxy.set(proxy, map);
         if(requestSid) this.#proxyR.add(proxy);
     }
 
     async initialize() {
+        console.info('[System]', 'initializing...');
+        const start = Date.now();
         await this.#database.initialize();
+        await this.#question.initialize();
         await this.#user.initialize();
         await this.#game.initialize();
         await this.#session.initialize();
+        console.info('[System]', 'initializeed in', Date.now() - start, 'ms.');
     }
 
     async shutdown() {
@@ -64,19 +74,20 @@ export default class Core {
         await this.#session.shutdown();
         await this.#game.shutdown();
         await this.#user.shutdown();
+        await this.#question.shutdown();
         await this.#database.shutdown();
         console.info('[System]', 'shutdowned.');
     }
 
     async cmd(sid, {c, d}) {
-        if(!c) return { r: 0, e: $err.NO_CMD };
+        if(!c) return { r: 0, e: this.$err.NO_CMD };
         const [p, cmd] = c.split(".");
         const proxy = this.#proxy.get(p);
         if(!proxy || !proxy.has(cmd))
-            return { r: 0, e: $err.NO_CMD };
+            return { r: 0, e: this.$err.NO_CMD };
         let mark = sid;
         if(!this.#proxyR.has(p)) {
-            if(!this.#user.isAuthenticated(sid)) return { r: 0, e: $err.NO_AUTH };
+            if(!this.#user.isAuthenticated(sid)) return { r: 0, e: this.$err.NO_AUTH };
             mark = this.#user.uid(sid);
         }
         const result = await proxy.get(cmd)(mark, d);
