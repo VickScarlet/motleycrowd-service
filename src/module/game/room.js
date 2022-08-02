@@ -121,7 +121,7 @@ export default class Room {
         if(!question) {
             // TODO: 完成
             this.#listSend('settlement', {todo:"settlement"});
-            this.#game.settlement(this, this.#questions, this.#users);
+            this.#game.settlement(this);
             return;
         }
         this.#listSend('question', question.id);

@@ -42,7 +42,7 @@ export default class Session extends IModule {
         this.#sessions.set(sid, session);
         // this.#pipe.set(session, []);
         const online = this.online;
-        logger.debug('[Session|conn] [online:%d] [sid:%s]', online, sid);
+        // logger.debug('[Session|conn] [online:%d] [sid:%s]', online, sid);
         session.on('close', () => this.#sessionClose(sid, session));
         session.on('message', message => this.#sessionMessage(sid, message, session));
         session.on('error', error => this.#sessionError(sid, error, session));

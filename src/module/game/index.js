@@ -112,6 +112,7 @@ export default class Game extends IModule {
     #clear(room) {
         if(room.meta.private) this.#privates.delete(room.meta.id);
         else this.#pairs.delete(room);
+        room.live.forEach(uid=>this.#userRoom.delete(uid));
         room.clear();
     }
 
@@ -141,8 +142,7 @@ export default class Game extends IModule {
         return this.$core.question.random(users);
     }
 
-    settlement(room, questions, users) {
+    settlement(room) {
         this.#clear(room);
-        users.forEach(uid=>this.#userRoom.delete(uid));
     }
 }

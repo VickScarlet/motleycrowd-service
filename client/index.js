@@ -10,8 +10,9 @@ const clientConfig = {
     },
 };
 
-global.clients = new Array(20000).fill(1).map(()=>new MiniClient(clientConfig));
-console.debug('client 20000 start');
+const count = 119;
+global.clients = new Array(count).fill(1).map(()=>new MiniClient(clientConfig));
+console.debug('client %d start', count);
 const start = async client => {
     await client.initialize();
     await client.delay(1000, 5000);
@@ -23,4 +24,4 @@ for(const client of clients) {
     await client.delay(0, 100);
     start(client);
 }
-console.debug('client 20000 paid');
+console.debug('client %d paid', count);
