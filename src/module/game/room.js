@@ -76,7 +76,7 @@ export default class Room {
         const question = this.#questions.next();
         if(!question) {
             // TODO: 完成
-            // this.$core.send(Array.from(this.#live), 'question', question.id);
+            this.#listSend('settlement', {todo:"settlement"});
             return;
         }
         this.#listSend('question', question.id);
