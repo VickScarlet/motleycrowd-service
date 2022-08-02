@@ -6,6 +6,15 @@
     "configurations": [
         {
             "type": "node",
+            "request": "attach",
+            "name": "attach process",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "processId": "${command:PickProcess}",
+        },
+        {
+            "type": "node",
             "request": "launch",
             "name": "main process",
             "skipFiles": [
@@ -16,9 +25,25 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "miniclient",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "program": "${workspaceFolder}/client/index.js"
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "test",
             "skipFiles": [
                 "<node_internals>/**"
+            ],
+            "args": [
+                "-u",
+                "tdd",
+                "--timeout",
+                "999999",
+                "--colors"
             ],
             "program": "${workspaceFolder}/node_modules/mocha/bin/mocha.js"
         },

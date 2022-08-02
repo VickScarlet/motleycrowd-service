@@ -1,5 +1,8 @@
 import './global.function.js';
+import Logger from './logger.js';
 import Core from './module/index.js';
+
+globalThis.logger = new Logger({});
 
 const core = new Core({
     database: {
@@ -31,7 +34,7 @@ const core = new Core({
         authLimit: 5000,
     },
     game: {
-        pair: {
+        types: {
             10: {
                 limit: 10,
             },
@@ -40,5 +43,10 @@ const core = new Core({
             }
         }
     },
+    logger: {
+        disable: true,
+    }
 });
 await core.initialize();
+global.shutdown = ()=>core.shutdown();
+global.core = core;

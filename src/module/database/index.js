@@ -23,6 +23,7 @@ export default class Database extends IModule {
     async initialize() {
         const {host, port, dbName, username, password, model: mc} = this.$configure;
         await mongoose.connect(`mongodb://${host}:${port}`, {
+            useNewUrlParser: true,
             dbName, username, password,
         });
 

@@ -63,7 +63,8 @@ export default class User extends IModule {
         // record this session
         this.#users.set(uid, {sid, model});
         this.#authenticated.set(sid, uid);
-        return { r: true };
+        this.#lock.delete(username);
+        return { r: true, uid };
     }
 
     guest(sid) {
@@ -127,17 +128,22 @@ export default class User extends IModule {
     }
 
     async data(uid) {
+        return this.isGuest(uid)?
+            {uid, guest: true}
+            : this.#data(uid);
+    }
+
+    async #data(uid) {
         const model = this.#users.has(uid)
             ? this.#users.get(uid).model
             : await this.$core.database.user.find(uid);
         if(!model) return null;
         const {username} = model;
-        return {username};
+        return {uid, username};
     }
 
-    isGuest(sid) {
-        const id = this.#authenticated.get(sid);
-        return this.#users.get(id).g;
+    isGuest(uid) {
+        return uid[0] == '#';
     }
 
     #passwordEncrypt(password) {

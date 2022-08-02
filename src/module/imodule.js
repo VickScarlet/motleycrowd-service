@@ -19,6 +19,7 @@ export default class IModule {
     #$core;
     #$configure;
 
+    get state() { return null; }
     get $err() {return ErrorCode;}
     get $core() { return this.#$core; }
     get $configure() { return this.#$configure; }
