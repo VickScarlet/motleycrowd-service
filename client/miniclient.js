@@ -178,16 +178,28 @@ export default class MiniClient {
         return this.#session.command(command, data);
     }
 
+    async delay(min, max) {
+        const delay = Math.random() * (max - min) + min;
+        await new Promise(resolve => setTimeout(resolve, delay));
+    }
+
     async onmessage({c,d}) {
         switch(c) {
-            case 'question':
+            case 'game.question':
                 // auto answer
                 const question = this.#question.info(d);
                 const answer = listRandom(Object.keys(question.options));
+                await this.delay(1000, 10000);
                 await this.game.answer(answer, d);
                 return;
-            case 'join':
-            case 'leave':
+            case 'game.settlement':
+                await this.delay(15000, 60000);
+                await this.game.pair(Math.random() > 0.9?10:100);
+                return;
+            case 'game.user':
+            case 'game.ready':
+            case 'game.answer':
+
             default:
                 break;
         }

@@ -142,5 +142,4 @@ export default class Core {
             game: this.#game.state,
         };
     }
-
 }

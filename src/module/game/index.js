@@ -40,7 +40,7 @@ export default class Game extends IModule {
         if(!this.#privates.has(roomId)) return {r: false};
         const room = this.#privates.get(roomId);
         room.join(uid);
-        this.#userRoom.set(uid, [room, false, roomId]);
+        this.#userRoom.set(uid, room);
         const info = await room.info();
         return {r: true, info};
     }
@@ -56,13 +56,13 @@ export default class Game extends IModule {
         if(pending.length > 0) {
             room = pending[0];
         } else {
-            room = this.#newRoom(type);
+            room = this.#newRoom(type, { private: false });
             this.#pairs.add(room);
             pending.push(room);
         }
 
         room.join(uid);
-        this.#userRoom.set(uid, [room, true]);
+        this.#userRoom.set(uid, room);
 
         if(room.ready) {
             pending.shift();
@@ -74,12 +74,10 @@ export default class Game extends IModule {
 
     async leave(uid) {
         if(!this.#userRoom.has(uid)) return {r: true};
-        const [room, isPairRoom, roomId] = this.#userRoom.get(uid)
+        const room = this.#userRoom.get(uid)
         this.#userRoom.delete(uid);
         if(!!room.leave(uid)) return {r: true};
-        if(isPairRoom) this.#pairs.delete(room);
-        else this.#privates.delete(roomId);
-        room.clear();
+        this.#clear(room);
         return {r: true};
     }
 
@@ -88,21 +86,33 @@ export default class Game extends IModule {
         if(this.#userRoom.has(uid)) return {r: false, e: this.$err.GAME_IN_ROOM};
         if(!this.#types.propertyIsEnumerable(type)) return {r: false, e: this.$err.NO_GAME_TYPE};
         const roomId = this.#roomId();
-        const room = this.#newRoom(type);
+        const room = this.#newRoom(type, {
+            private: true,
+            id: roomId,
+        });
         this.#privates.set(roomId, room);
-        this.#userRoom.set(uid, [room, false, roomId]);
+        this.#userRoom.set(uid, room);
         room.join(uid);
         return {r: true, room: roomId};
     }
 
     async answer(uid, answer, question) {
         if(!this.#userRoom.has(uid)) return {r: false};
-        const [room] = this.#userRoom.get(uid);
+        const room = this.#userRoom.get(uid);
         return {r: room.answer(uid, answer, question)};
     }
 
-    #newRoom(type) {
-        return new Room(this.$core, this.#types[type]);
+    #newRoom(type, metas) {
+        const room = new Room(this, this.#types[type]);
+        for (const m in metas)
+            room.meta[m] = metas[m];
+        return room;
+    }
+
+    #clear(room) {
+        if(room.meta.private) this.#privates.delete(room.meta.id);
+        else this.#pairs.delete(room);
+        room.clear();
     }
 
     #roomId() {
@@ -112,5 +122,27 @@ export default class Game extends IModule {
             .map(v=>Math.floor(Math.pair()*v).toString(v))
             .join('');
         return this.#privates.has(id) ? this.#roomId(): id;
+    }
+
+    async userdata(uid) {
+        if(uid instanceof Set) uid = [...uid];
+        if(uid instanceof Array)
+            return Promise.all(uid.map(u=>this.$core.user.data(u)))
+        return this.$core.user.data(uid);
+    }
+
+    async listSend(uids, cmd, data) {
+        if(uids instanceof Set) uids = [...uids];
+        return this.$core.listSend(uids, `game.${cmd}`, data);
+    }
+
+    randomQuestion(users) {
+        if(users instanceof Set) users = [...users];
+        return this.$core.question.random(users);
+    }
+
+    settlement(room, questions, users) {
+        this.#clear(room);
+        users.forEach(uid=>this.#userRoom.delete(uid));
     }
 }

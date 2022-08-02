@@ -110,13 +110,13 @@ export default class Session extends IModule {
         // logger.debug('[Session|<<<<] [ssid:%s] receive:', sid.substring(0,8), receive);
         const data = await this.$core.useraction('message', sid, receive);
         // logger.debug('[Session|r>>>] [ssid:%s] message:', sid.substring(0,8), data);
-        const packetMessage = await this.#packet([guid, data]);
+        const packetMessage = await this.#packet([guid, data, this.online]);
         await this.#send(session, packetMessage);
     }
 
     async broadcast(message) {
         if(!this.#sessions.size) return;
-        message = await this.#packet([this.#BORDERCAST, message]);
+        message = await this.#packet([this.#BORDERCAST, message, this.online]);
         this.#sessions.forEach(session => session.send(message));
     }
 
@@ -124,16 +124,16 @@ export default class Session extends IModule {
         const session = this.#sessions.get(sid);
         if(!session) return;
         // logger.debug('[Session|s>>>] [ssid:%s] message:', sid.substring(0,8), message);
-        message = await this.#packet([this.#MESSAGE, message]);
+        message = await this.#packet([this.#MESSAGE, message, this.online]);
         await this.#send(session, message);
     }
 
     async listSend(sids, message) {
-        message = await this.#packet([this.#MESSAGE, message]);
         const sessions = sids
             .map(sid => this.#sessions.get(sid))
             .filter(session=>!!session);
         if(!sessions.length) return false;
+        message = await this.#packet([this.#MESSAGE, message, this.online]);
         return Promise.all(
             sessions.map(session => this.#send(session, message))
         );

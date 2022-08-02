@@ -36,8 +36,8 @@ globalThis.sum = function sum(...arr) {
 }
 
 globalThis.firstNotNull = function firstNotNull(...arr) {
-    for(const v of arr.flat()) 
-        if(v!=null) 
+    for(const v of arr.flat())
+        if(v!=null)
             return v;
 }
 
@@ -53,4 +53,27 @@ globalThis.instance = function instance(obj) {
     }
 
     return null;
+}
+
+globalThis.delay = async function delay(min, max) {
+    const time = max? Math.random() * (max - min) + min : min;
+    await new Promise(resolve => setTimeout(resolve, time));
+}
+
+globalThis.batch = function batch(bpart, time, apart) {
+    let flag = false;
+    const args = {};
+    const fn = async ()=>{
+        if(flag) return;
+        flag = true;
+        const ret = await apart?.(args);
+        await delay(time);
+        if(!flag) return;
+        bpart(ret, args);
+        flag = false;
+    }
+    Object.defineProperties(fn, {
+        flag: { get: ()=>flag, set: f=>{flag=f}},
+    });
+    return fn;
 }

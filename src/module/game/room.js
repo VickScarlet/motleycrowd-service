@@ -1,32 +1,67 @@
 export default class Room {
-    constructor(core, {limit, }) {
-        this.$core = core;
+    constructor(game, {limit, }) {
+        this.#game = game;
         this.#limit = limit;
+
+        // join leave batch
+        this.#jlBatch = batch(
+            async last=>{
+                const join = [];
+                const leave = [];
+                for(const uid of this.#users) {
+                    if(last.has(uid)) continue;
+                    join.push(uid);
+                }
+                for(const uid of last) {
+                    if(this.#users.has(uid)) continue;
+                    leave.push(uid);
+                }
+
+                if(!(join.length+leave.length)) return;
+
+                this.#listSend('user', {
+                    join: await this.#game.userdata(join),
+                    leave
+                });
+            },
+            this.#batchTick,
+            ()=>new Set(this.#users),
+        );
+
+        // answer batch
+        this.#answerBatch = batch(
+            ()=>this.#listSend('answer', this.#questions.answerSize),
+            this.#batchTick,
+        )
     }
 
+    #meta = {};
+    #game;
     #limit;
     #startWait = 3000;
+    #batchTick = 5000;
     #users = new Set();
     #live = new Set();
     #start = false;
     #questions = null;
-    #timeout = null;
+    #jlBatch;
+    #answerBatch;
 
+    get meta() { return this.#meta; }
     get ready() {return this.#users.size == this.#limit;}
+    get users() {return this.#users;}
+    get live() {return this.#live;}
+    get questions() { return this.#questions; }
 
     #listSend(cmd, data, filter) {
         let uids = Array.from(this.#live);
         if(filter) uids = uids.filter(uid=>uid!=filter);
-        this.$core.listSend(uids, cmd, data);
+        this.#game.listSend(uids, cmd, data);
     }
 
     async info() {
-        const users = await Promise.all(
-            Array.from(this.#users)
-                .map(uid=>this.$core.user.data(uid))
-        );
         return {
-            users,
+            users: await this.#game.userdata(this.#users),
             limit: this.#limit,
         };
     }
@@ -36,24 +71,28 @@ export default class Room {
         this.#users.add(uid);
         this.#live.add(uid);
         if(this.ready)
-            this.#timeout = setTimeout(()=>{
-                this.#timeout = null;
-                if(!this.ready) return;
+            (async ()=>{
+                this.#listSend('ready', this.#startWait);
+                await delay(this.#startWait);
+                if(!this.ready) {
+                    this.#listSend('pending', this.#users.size);
+                    return;
+                }
                 this.#start = true;
-                this.#questions = this.$core.question.random(this.#users);
+                this.#questions = this.#game.randomQuestion(this.#users);
                 this.#next();
-            }, this.#startWait);
-        this.#listSend('join', this.$core.user.data(uid), uid);
+            })();
+        this.#jlBatch();
         return true;
     }
 
     leave(uid) {
         this.#live.delete(uid);
-        this.#listSend('leave', uid, uid);
-        if(this.#live.size == 0) {
-            // TODO: 没人了
+        if(this.#start) {
+            this.#checktonext();
+            return this.#live.size;
         }
-        if(this.#start) return this.#live.size;
+        this.#jlBatch();
         this.#users.delete(uid);
         return this.#users.size;
     }
@@ -62,14 +101,19 @@ export default class Room {
         if(!this.#start) return false;
         if(this.#questions.has(uid) || question != this.#questions.id) return false;
         this.#questions.answer(uid, answer);
-        if(this.#questions.answerSize != this.#live.size) {
-            this.#listSend('answer', this.#questions.answerSize);
-            return true;
-        }
+        this.#answerBatch();
+        this.#checktonext();
+        return true;
+
+    }
+
+    async #checktonext() {
+        await delay(3000);
+        if(!this.#questions || this.#questions.answerSize < this.#live.size) return;
+        this.#answerBatch.flag = false;
         // TODO: 本题答题结束
         this.#questions.judge();
         this.#next();
-        return true;
     }
 
     #next() {
@@ -77,19 +121,19 @@ export default class Room {
         if(!question) {
             // TODO: 完成
             this.#listSend('settlement', {todo:"settlement"});
+            this.#game.settlement(this, this.#questions, this.#users);
             return;
         }
         this.#listSend('question', question.id);
     }
 
     clear() {
-        if(this.#timeout) {
-            clearTimeout(this.#timeout);
-            this.#timeout = null;
-        }
+        this.#jlBatch.flag = false;
+        this.#answerBatch.flag = false;
         this.#users.clear();
         this.#live.clear();
         this.#questions = null;
         this.#start = false;
+        this.#meta = {};
     }
 }
