@@ -9,11 +9,8 @@ export default class User {
             username: {type: String, required: true, unique: true, index: true},
             password: {type: String, required: true},
             email: {type: String, unique: true, index: true},
-            meta: {
-                grade: Number,
-                rank:  Number,
-            },
-            created: { type: Date, default: Date.now },
+            meta: {type: Object, default: {}},
+            created: {type: Date, default: Date.now},
         });
         this.#model = model('User', this.#schema, collection);
     }

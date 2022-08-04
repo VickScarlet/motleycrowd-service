@@ -128,8 +128,18 @@ export default class Game extends IModule {
     async userdata(uid) {
         if(uid instanceof Set) uid = [...uid];
         if(uid instanceof Array)
-            return Promise.all(uid.map(u=>this.$core.user.data(u)))
-        return this.$core.user.data(uid);
+            return Promise.all(
+                uid.map(u=>this.#userdata(u))
+            );
+        return this.#userdata(u);
+    }
+
+    async #userdata(uid) {
+        if(this.$core.user.isGuest(uid)) return [uid, true];
+        const {
+            username
+        } = await this.$core.user.model(uid);
+        return [uid, false, username];
     }
 
     async listSend(uids, cmd, data) {

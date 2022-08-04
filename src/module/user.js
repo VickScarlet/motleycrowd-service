@@ -128,18 +128,16 @@ export default class User extends IModule {
     }
 
     async data(uid) {
-        return this.isGuest(uid)?
-            {uid, guest: true}
-            : this.#data(uid);
+        if(this.isGuest(uid)) return {uid, guest: true};
+        const model = this.model(uid);
+        if(!model) return null;
+        return model.toJSON();
     }
 
-    async #data(uid) {
-        const model = this.#users.has(uid)
-            ? this.#users.get(uid).model
-            : await this.$core.database.user.find(uid);
-        if(!model) return null;
-        const {username} = model;
-        return {uid, username};
+    async model(uid) {
+        if (this.#users.has(uid))
+            return this.#users.get(uid).model;
+        return this.$core.database.user.find(uid);
     }
 
     isGuest(uid) {
