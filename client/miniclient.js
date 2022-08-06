@@ -187,10 +187,10 @@ export default class MiniClient {
         switch(c) {
             case 'game.question':
                 // auto answer
-                const question = this.#question.get(d);
+                const question = this.#question.get(d.id);
                 const answer = listRandom(Object.keys(question.options));
                 await this.delay(1000, 10000);
-                await this.game.answer(answer, d);
+                await this.game.answer(answer, d.id);
                 return;
             case 'game.settlement':
                 await this.delay(15000, 60000);

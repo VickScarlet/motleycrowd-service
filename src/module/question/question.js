@@ -81,7 +81,7 @@ export class Questions {
     next() {
         if(this.end) return null;
         this.#index++;
-        return this.#questions[this.#index] || null;
+        return !this.end;
     }
 
     get score() {return this.#score;}

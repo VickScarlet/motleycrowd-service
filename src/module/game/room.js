@@ -31,7 +31,7 @@ export default class Room {
 
         // answer batch
         this.#answerBatch = batch(
-            ()=>this.#listSend('answer', this.#questions.answerSize),
+            ()=>this.#listSend('answer', {id: this.#questions.id, size: this.#questions.answerSize}),
             this.#batchTick,
         )
     }
@@ -54,10 +54,10 @@ export default class Room {
     get live() {return this.#live;}
     get questions() { return this.#questions; }
 
-    #listSend(cmd, data, filter) {
+    async #listSend(cmd, data, filter) {
         let uids = Array.from(this.#live);
         if(filter) uids = uids.filter(uid=>uid!=filter);
-        this.#game.listSend(uids, cmd, data);
+        return this.#game.listSend(uids, cmd, data);
     }
 
     async info() {
@@ -69,21 +69,21 @@ export default class Room {
 
     join(uid) {
         if(this.ready) return false;
+        this.#jlBatch();
         this.#users.add(uid);
         this.#live.add(uid);
         if(this.ready)
             (async ()=>{
-                this.#listSend('ready', this.#startWait);
+                await this.#listSend('ready', this.#startWait);
                 await delay(this.#startWait);
                 if(!this.ready) {
-                    this.#listSend('pending', this.#users.size);
+                    await this.#listSend('pending', this.#users.size);
                     return;
                 }
                 this.#start = true;
                 this.#questions = this.#game.randomQuestion(this.#users);
                 this.#next();
             })();
-        this.#jlBatch();
         return true;
     }
 
@@ -112,20 +112,19 @@ export default class Room {
         await delay(3000);
         if(!this.#questions || this.#questions.answerSize < this.#live.size) return;
         this.#answerBatch.flag = false;
-        // TODO: 本题答题结束
         this.#questions.judge();
         this.#next();
     }
 
     #next() {
-        const question = this.#questions.next();
-        if(!question) {
-            // TODO: 完成
-            this.#listSend('settlement', {todo:"settlement"});
-            this.#game.settlement(this);
+        if(this.#questions.next()) {
+            this.#listSend('question', {
+                id: this.#questions.id
+            });
             return;
         }
-        this.#listSend('question', question.id);
+        this.#listSend('settlement', {todo:"settlement"});
+        this.#game.settlement(this);
     }
 
     clear() {

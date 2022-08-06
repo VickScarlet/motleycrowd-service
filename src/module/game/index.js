@@ -93,7 +93,9 @@ export default class Game extends IModule {
         this.#privates.set(roomId, room);
         this.#userRoom.set(uid, room);
         room.join(uid);
-        return {r: true, room: roomId};
+
+        const info = await room.info();
+        return {r: true, room: roomId, info };
     }
 
     async answer(uid, answer, question) {
