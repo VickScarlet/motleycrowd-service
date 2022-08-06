@@ -1,7 +1,7 @@
-import '../src/global.function.js';
 import WebSocket from 'ws';
 import { v4 as uuidGenerator } from 'uuid';
-import {unzipSync} from 'zlib';
+import { unzipSync } from 'zlib';
+import { listRandom } from '../src/functions/index.js';
 import Question from '../src/module/question/index.js';
 
 class Session {

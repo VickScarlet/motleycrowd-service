@@ -1,4 +1,3 @@
-import assert from 'assert';
 import '../src/global.function.js';
 import Logger from '../src/logger.js';
 import Core from '../src/module/index.js';
@@ -16,7 +15,6 @@ describe('System', () => {
         await dbClient.db(dbName).dropDatabase();
         await dbClient.close();
     }
-    const time = async t => new Promise(resolve => setTimeout(resolve, t));
     global.logger = new Logger({display: false});
     const core = new Core({
         database: {

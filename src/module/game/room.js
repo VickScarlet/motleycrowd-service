@@ -1,3 +1,4 @@
+import { delay, batch } from '../../functions/index.js';
 export default class Room {
     constructor(game, {limit, }) {
         this.#game = game;

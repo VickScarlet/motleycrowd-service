@@ -1,4 +1,3 @@
-import './global.function.js';
 import Logger from './logger.js';
 import Core from './module/index.js';
 
