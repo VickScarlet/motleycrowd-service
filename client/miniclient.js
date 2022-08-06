@@ -187,7 +187,7 @@ export default class MiniClient {
         switch(c) {
             case 'game.question':
                 // auto answer
-                const question = this.#question.info(d);
+                const question = this.#question.get(d);
                 const answer = listRandom(Object.keys(question.options));
                 await this.delay(1000, 10000);
                 await this.game.answer(answer, d);

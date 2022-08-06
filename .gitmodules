@@ -1,0 +1,3 @@
+[submodule "src/module/question/subjects"]
+	path = src/module/question/subjects
+	url = https://github.com/VickScarlet/motleycrowd-questions.git
