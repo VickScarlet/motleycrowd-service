@@ -20,10 +20,10 @@ export default class Room {
 
                 if(!(join.length+leave.length)) return;
 
-                this.#listSend('user', {
-                    join: await this.#game.userdata(join),
+                this.#listSend('user', [
+                    await this.#game.userdata(join),
                     leave
-                });
+                ]);
             },
             this.#batchTick,
             ()=>new Set(this.#users),
@@ -31,7 +31,10 @@ export default class Room {
 
         // answer batch
         this.#answerBatch = batch(
-            ()=>this.#listSend('answer', {id: this.#questions.id, size: this.#questions.answerSize}),
+            ()=>this.#listSend('answer', [
+                this.#questions.idx,
+                this.#questions.answerSize
+            ]),
             this.#batchTick,
         )
     }
@@ -98,9 +101,9 @@ export default class Room {
         return this.#users.size;
     }
 
-    answer(uid, answer, question) {
+    answer(uid, answer, idx) {
         if(!this.#start) return false;
-        if(this.#questions.has(uid) || question != this.#questions.id) return false;
+        if(this.#questions.has(uid) || idx != this.#questions.idx) return false;
         this.#questions.answer(uid, answer);
         this.#answerBatch();
         this.#checktonext();
@@ -118,9 +121,8 @@ export default class Room {
 
     #next() {
         if(this.#questions.next()) {
-            this.#listSend('question', {
-                id: this.#questions.id
-            });
+            const {id, idx} = this.#questions;
+            this.#listSend('question', [idx, id]);
             return;
         }
         this.#listSend('settlement', {todo:"settlement"});

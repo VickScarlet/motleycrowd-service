@@ -196,10 +196,10 @@ export default class MiniClient {
         switch(c) {
             case 'game.question':
                 // auto answer
-                const question = this.#question.get(d.id);
+                const question = this.#question.get(d[1]);
                 const answer = listRandom(Object.keys(question.options));
                 await this.delay(1000, 10000);
-                await this.game.answer(answer, d.id);
+                await this.game.answer(d[0], answer);
                 return;
             case 'game.settlement':
                 await this.delay(15000, 60000);
@@ -226,7 +226,7 @@ export default class MiniClient {
         create: type => this.command('game.create', {type}),
         join: room => this.command('game.join', {room}),
         leave: () => this.command('game.leave'),
-        answer: (answer, question) => this.command('game.answer', {answer, question}),
+        answer: (idx, answer) => this.command('game.answer', [idx, answer]),
     }
 
 

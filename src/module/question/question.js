@@ -89,6 +89,7 @@ export class Questions {
     get questions() {return this.#questions;}
     get size() {return this.#questions.length;}
     get end() {return this.#questions.length <= this.#index;}
+    get idx() {return this.#index;}
     get id() {
         const question = this.question;
         if(!question) return

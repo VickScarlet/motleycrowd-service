@@ -28,11 +28,11 @@ export default class Game extends IModule {
             this.#pairPending.set(type, []);
         }
         this.$core.proxy('game', {
-            create: (uid, configure) => this.create(uid, configure),
+            create: (uid, {type}) => this.create(uid, type),
             join: (uid, {room}) => this.join(uid, room),
             pair: (uid, {type}) => this.pair(uid, type),
             leave: uid => this.leave(uid),
-            answer: (uid, {answer, question}) => this.answer(uid, answer, question),
+            answer: (uid, [idx, answer]) => this.answer(uid, answer, idx),
         });
     }
 
@@ -81,7 +81,7 @@ export default class Game extends IModule {
         return [0];
     }
 
-    async create(uid, {type}={}) {
+    async create(uid, type) {
         type = type&&''+type;
         if(this.#userRoom.has(uid)) return [this.$err.GAME_IN_ROOM];
         if(!this.#types.propertyIsEnumerable(type)) return [this.$err.NO_GAME_TYPE];
@@ -98,10 +98,10 @@ export default class Game extends IModule {
         return [0, {room: roomId, info}];
     }
 
-    async answer(uid, answer, question) {
+    async answer(uid, answer, idx) {
         if(!this.#userRoom.has(uid)) return [1];
         const room = this.#userRoom.get(uid);
-        const result = room.answer(uid, answer, question);
+        const result = room.answer(uid, answer, idx);
         return [result?0:1];
     }
 
