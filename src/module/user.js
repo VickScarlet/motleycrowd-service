@@ -34,11 +34,11 @@ export default class User extends IModule {
 
     async authenticate(sid, username, password) {
         // check username
-        if(!this.#checkUsername(username)) return { r: false, e: this.$err.NO_USER };
+        if(!this.#checkUsername(username)) return [this.$err.NO_USER];
 
         // AUTH LIMIT
         if(this.#lock.has(sid) || this.#lock.has(username))
-            return { r: false, e: this.$err.AUTH_LIMIT };
+            return [this.$err.AUTH_LIMIT];
         this.#lock.add(sid);
         this.#lock.add(username);
         setTimeout(() => {
@@ -50,11 +50,11 @@ export default class User extends IModule {
         // query db
         const model = await this.$core.database.user.findUserByUsername(username);
         // not found
-        if(!model) return { r: false, e: this.$err.NO_USER };
+        if(!model) return [this.$err.NO_USER];
         // founded
         const {uid} = model;
         // check password
-        if(model.password !== this.#passwordEncrypt(password)) return { r: false, e: this.$err.PASSWORD_ERROR };
+        if(model.password !== this.#passwordEncrypt(password)) return [this.$err.PASSWORD_ERROR];
         // last session
         const lastSid = this.#users.get(uid);
         // kick last session
@@ -64,29 +64,29 @@ export default class User extends IModule {
         this.#users.set(uid, {sid, model});
         this.#authenticated.set(sid, uid);
         this.#lock.delete(username);
-        return { r: true, uid };
+        return [0, {uid}];
     }
 
     guest(sid) {
         const guestNumber = `#${(this.#counter++).toString(36)}`;
         this.#authenticated.set(sid, guestNumber);
         this.#users.set(guestNumber, {sid, g: true});
-        return { r: true };
+        return [0];
     }
 
     async register(sid, username, password) {
         // check username
-        if(!this.#checkUsername(username)) return { r: false };
+        if(!this.#checkUsername(username)) return [1];
 
         // AUTH LIMIT
-        if(this.#lock.has(sid)) return { r: false, e: this.$err.AUTH_LIMIT };
+        if(this.#lock.has(sid)) return [this.$err.AUTH_LIMIT];
         this.#lock.add(sid);
         setTimeout(() => this.#lock.delete(sid), this.$configure.authLimit);
         // AUTH LIMIT
 
         // check exist
         if(await this.$core.database.user.findUserByUsername(username))
-            return { r: false };
+            return [1];
 
         // register
         const uid = (46656 + ++this.#registerCount).toString(36); // uid by register count
@@ -96,7 +96,7 @@ export default class User extends IModule {
         // record this session
         this.#authenticated.set(sid, uid);
         this.#users.set(uid, {sid, model});
-        return { r: true };
+        return [0];
     }
 
     leave(sid) {
@@ -110,7 +110,7 @@ export default class User extends IModule {
             this.#users.delete(uid);
             this.#authenticated.delete(sid);
         }
-        return { r: true };
+        return [0];
     }
 
     #checkUsername(username) {

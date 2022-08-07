@@ -1,4 +1,5 @@
 export default ({
+    COMMON_ERR: 1,
     NO_CMD: 1001,
 
     NO_AUTH: 2000,

@@ -86,19 +86,17 @@ export default class Core {
     }
 
     async command(sid, {c, d}) {
-        if(!c) return { r: 0, e: this.$err.NO_CMD };
+        if(!c) return [this.$err.NO_CMD];
         const [p, cmd] = c.split(".");
         const proxy = this.#proxy.get(p);
         if(!proxy || !proxy.has(cmd))
-            return { r: 0, e: this.$err.NO_CMD };
+            return [this.$err.NO_CMD];
         let mark = sid;
         if(!this.#proxyR.has(p)) {
-            if(!this.#user.isAuthenticated(sid)) return { r: 0, e: this.$err.NO_AUTH };
+            if(!this.#user.isAuthenticated(sid)) return [this.$err.NO_AUTH];
             mark = this.#user.uid(sid);
         }
-        const result = await proxy.get(cmd)(mark, d);
-        result.r = Number(result.r) || 0;
-        return result;
+        return proxy.get(cmd)(mark, d);
     }
 
     async send(uid, cmd, data) {

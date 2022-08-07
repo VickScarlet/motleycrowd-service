@@ -37,20 +37,20 @@ export default class Game extends IModule {
     }
 
     async join(uid, roomId) {
-        if(!this.#privates.has(roomId)) return {r: false};
+        if(!this.#privates.has(roomId)) return [1];
         const room = this.#privates.get(roomId);
         room.join(uid);
         this.#userRoom.set(uid, room);
         const info = await room.info();
-        return {r: true, info};
+        return [0, info];
     }
 
     async pair(uid, type) {
         type = type&&''+type;
         // TODO: pair type;
         // logger.debug("[Game|pair] [type:%s] [uid:%s]", type, uid);
-        if(this.#userRoom.has(uid)) return {r: false, e: this.$err.GAME_IN_ROOM};
-        if(!this.#types.propertyIsEnumerable(type)) return {r: false, e: this.$err.NO_GAME_TYPE};
+        if(this.#userRoom.has(uid)) return [this.$err.GAME_IN_ROOM];
+        if(!this.#types.propertyIsEnumerable(type)) return [this.$err.NO_GAME_TYPE];
         const pending = this.#pairPending.get(type);
         let room;
         if(pending.length > 0) {
@@ -69,22 +69,22 @@ export default class Game extends IModule {
         }
 
         const info = await room.info();
-        return {r: true, info};
+        return [0, info];
     }
 
     async leave(uid) {
-        if(!this.#userRoom.has(uid)) return {r: true};
+        if(!this.#userRoom.has(uid)) return [0];
         const room = this.#userRoom.get(uid)
         this.#userRoom.delete(uid);
-        if(!!room.leave(uid)) return {r: true};
+        if(!!room.leave(uid)) return [0];
         this.#clear(room);
-        return {r: true};
+        return [0];
     }
 
     async create(uid, {type}={}) {
         type = type&&''+type;
-        if(this.#userRoom.has(uid)) return {r: false, e: this.$err.GAME_IN_ROOM};
-        if(!this.#types.propertyIsEnumerable(type)) return {r: false, e: this.$err.NO_GAME_TYPE};
+        if(this.#userRoom.has(uid)) return [this.$err.GAME_IN_ROOM];
+        if(!this.#types.propertyIsEnumerable(type)) return [this.$err.NO_GAME_TYPE];
         const roomId = this.#roomId();
         const room = this.#newRoom(type, {
             private: true,
@@ -95,13 +95,14 @@ export default class Game extends IModule {
         room.join(uid);
 
         const info = await room.info();
-        return {r: true, room: roomId, info };
+        return [0, {room: roomId, info}];
     }
 
     async answer(uid, answer, question) {
-        if(!this.#userRoom.has(uid)) return {r: false};
+        if(!this.#userRoom.has(uid)) return [1];
         const room = this.#userRoom.get(uid);
-        return {r: room.answer(uid, answer, question)};
+        const result = room.answer(uid, answer, question);
+        return [result?0:1];
     }
 
     #newRoom(type, metas) {
