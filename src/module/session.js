@@ -88,7 +88,7 @@ export default class Session extends IModule {
     }
 
     async #sessionMessage(sid, message, session) {
-        const [guid, receive] = JSON.parse(message.toString());
+        const [guid, ...receive] = JSON.parse(message.toString());
         switch(guid) {
             case this.#PING:
                 // receive ping
@@ -97,7 +97,7 @@ export default class Session extends IModule {
                 return;
             case this.#PONG:
                 // receive pong
-                this.#onPone.get(sid)?.(receive);
+                this.#onPone.get(sid)?.(...receive);
                 this.#onPone.delete(sid);
                 return;
             case this.#REPLY:
@@ -108,7 +108,7 @@ export default class Session extends IModule {
         }
 
         // logger.debug('[Session|<<<<] [ssid:%s] receive:', sid.substring(0,8), receive);
-        const data = await this.$core.useraction('message', sid, receive);
+        const data = await this.$core.useraction('message', sid, {command: receive[0], data: receive[1]});
         // logger.debug('[Session|r>>>] [ssid:%s] message:', sid.substring(0,8), data);
         const packetMessage = await this.#packet([guid, data, this.online]);
         await this.#send(session, packetMessage);

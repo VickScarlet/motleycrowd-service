@@ -85,9 +85,9 @@ export default class Core {
         return true;
     }
 
-    async command(sid, {c, d}) {
-        if(!c) return [this.$err.NO_CMD];
-        const [p, cmd] = c.split(".");
+    async command(sid, {command, data}) {
+        if(!command) return [this.$err.NO_CMD];
+        const [p, cmd] = command.split(".");
         const proxy = this.#proxy.get(p);
         if(!proxy || !proxy.has(cmd))
             return [this.$err.NO_CMD];
@@ -96,19 +96,19 @@ export default class Core {
             if(!this.#user.isAuthenticated(sid)) return [this.$err.NO_AUTH];
             mark = this.#user.uid(sid);
         }
-        return proxy.get(cmd)(mark, d);
+        return proxy.get(cmd)(mark, data);
     }
 
-    async send(uid, cmd, data) {
+    async send(uid, command, data) {
         const sid = this.#user.sid(uid);
         if(!sid) return false;
-        return this.#session.send(sid, {c: cmd, d: await data});
+        return this.#session.send(sid, [command, await data]);
     }
 
-    async listSend(uids, cmd, data) {
+    async listSend(uids, command, data) {
         const sids = uids.map(uid => this.#user.sid(uid)).filter(sid=>!!sid);
         if(sids.length < 1) return false;
-        return this.#session.listSend(sids, {c: cmd, d: await data});
+        return this.#session.listSend(sids, [command, await data]);
     }
 
     async useraction(type, ...args) {

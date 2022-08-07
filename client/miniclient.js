@@ -136,8 +136,17 @@ class Session {
             for(let i = 1; i<=L; i++) {
                 const guid = guidF.substring(0, i)
                 if(this.#callbacks.has(guid)) continue;
-                this.#callbacks.set(guid, ret=>resolve(ret));
-                this.#send([guid, {c: command, d: data}]);
+                this.#callbacks.set(guid, ([code, ret])=>{
+                    // hook error
+                    const success = code !== undefined && !code;
+                    if(code) {
+                        console.debug('Command error:', code);
+                    }
+                    resolve({ success, code, data: ret });
+                });
+                const message = [guid,command];
+                if(data!==undefined) message.push(data);
+                this.#send(message);
                 return;
             }
         });
@@ -183,7 +192,7 @@ export default class MiniClient {
         await new Promise(resolve => setTimeout(resolve, delay));
     }
 
-    async onmessage({c,d}) {
+    async onmessage([c,d]) {
         switch(c) {
             case 'game.question':
                 // auto answer
