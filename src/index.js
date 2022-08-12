@@ -26,7 +26,7 @@ const core = new Core({
     question: {
     },
     session: {
-        host: '::',
+        host: '127.0.0.1',
         port: 1919,
     },
     user: {
