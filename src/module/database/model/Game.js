@@ -8,16 +8,14 @@ export default class Game {
     constructor(Schema, model, {collection}={}) {
         this.#schema = new Schema({
             id: {type: String, required: true, unique: true, index: true},
-            limit: {type: Number, required: true},
+            type: {type: Number, required: true},
             questions: [{
-                question: {type: String, required: true},
-                answer: {type: String, required: true},
+                id: {type: String, required: true},
+                picked: {type: String, required: true},
+                answer: {type: Map, required: true},
             }],
             users: [{type: String, required: true}],
-            answers: [{
-                user: {type: String, required: true},
-                answer: {type: String, required: true},
-            }],
+            score: {type: Map, required: true},
             created: { type: Date, default: Date.now },
         });
         this.#model = model('Game', this.#schema, collection);
@@ -25,10 +23,10 @@ export default class Game {
     #schema;
     #model;
 
-    async save(limit, questions, users, answers) {
-        return this.#model.create({ 
-            id: gid(), limit, questions,
-            users, answers,
+    async save(type, questions, users, score) {
+        return this.#model.create({
+            id: gid(), type, questions,
+            users, score,
         });
     }
 

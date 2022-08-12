@@ -36,9 +36,11 @@ const core = new Core({
         types: {
             10: {
                 limit: 10,
+                pool: 10,
             },
             100: {
                 limit: 100,
+                pool: 100,
             }
         }
     },

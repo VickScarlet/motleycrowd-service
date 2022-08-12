@@ -2,7 +2,6 @@ import WebSocket from 'ws';
 import { v4 as uuidGenerator } from 'uuid';
 import { unzipSync } from 'zlib';
 import { listRandom } from '../src/functions/index.js';
-import Question from '../src/module/question/index.js';
 
 class Session {
     constructor({protocol='ws', host, port}, {connect, boardcast, message}) {
@@ -164,7 +163,6 @@ class Session {
 
 export default class MiniClient {
     constructor({session}) {
-        this.#question = new Question();
         this.#session = new Session(session, {
             boardcast: data => this.onboardcast?.(data),
             connect: ({version}, online) => this.onconnect?.(version, online),
@@ -172,10 +170,8 @@ export default class MiniClient {
         });
     }
     #session;
-    #question;
 
     async initialize() {
-        await this.#question.initialize();
         await this.#session.start();
     }
 
@@ -196,8 +192,7 @@ export default class MiniClient {
         switch(c) {
             case 'game.question':
                 // auto answer
-                const question = this.#question.get(d[1]);
-                const answer = listRandom(Object.keys(question.options));
+                const answer = listRandom(d[2].split(''));
                 await this.delay(1000, 10000);
                 await this.game.answer(d[0], answer);
                 return;

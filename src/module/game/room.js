@@ -1,8 +1,9 @@
 import { delay, batch } from '../../functions/index.js';
 export default class Room {
-    constructor(game, {limit, }) {
+    constructor(game, {limit, pool}) {
         this.#game = game;
         this.#limit = limit;
+        this.#pool = pool;
 
         // join leave batch
         this.#jlBatch = batch(
@@ -33,7 +34,7 @@ export default class Room {
         this.#answerBatch = batch(
             ()=>this.#listSend('answer', [
                 this.#questions.idx,
-                this.#questions.answerSize
+                this.#questions.currentAnswerSize
             ]),
             this.#batchTick,
         )
@@ -42,6 +43,7 @@ export default class Room {
     #meta = {};
     #game;
     #limit;
+    #pool;
     #startWait = 3000;
     #batchTick = 5000;
     #users = new Set();
@@ -84,7 +86,7 @@ export default class Room {
                     return;
                 }
                 this.#start = true;
-                this.#questions = this.#game.randomQuestion(this.#users);
+                this.#questions = this.#game.randomQuestion(this.#pool);
                 this.#next();
             })();
         return true;
@@ -103,8 +105,9 @@ export default class Room {
 
     answer(uid, answer, idx) {
         if(!this.#start) return false;
-        if(this.#questions.has(uid) || idx != this.#questions.idx) return false;
-        this.#questions.answer(uid, answer);
+        if(this.#questions.has(uid)|| idx != this.#questions.idx)
+            return false;
+        if(!this.#questions.answer(uid, answer)) return false;
         this.#answerBatch();
         this.#checktonext();
         return true;
@@ -113,19 +116,31 @@ export default class Room {
 
     async #checktonext() {
         await delay(3000);
-        if(!this.#questions || this.#questions.answerSize < this.#live.size) return;
+        if( !this.#questions
+            || this.#questions.currentAnswerSize < this.#live.size
+        ) return;
         this.#answerBatch.flag = false;
-        this.#questions.judge();
         this.#next();
     }
 
     #next() {
-        if(this.#questions.next()) {
-            const {id, idx} = this.#questions;
-            this.#listSend('question', [idx, id]);
-            return;
-        }
-        this.#listSend('settlement', {todo:"settlement"});
+        if(!this.#questions.next())
+            return this.#settlement();
+
+        const {idx, question: {
+            id, picked
+        }} = this.#questions;
+        this.#listSend('question', [idx, id, picked]);
+    }
+
+    #settlement() {
+        const users = Array.from(this.#users);
+        const {questions, score} = this.#questions.settlement(users);
+        this.#listSend('settlement', {
+            questions,
+            score,
+            users,
+        });
         this.#game.settlement(this);
     }
 

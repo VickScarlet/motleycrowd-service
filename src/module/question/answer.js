@@ -11,6 +11,8 @@ export default class Answer {
 
     get size() { return this.#map.size; }
     get counter() { return this.#counter; }
+    get map() {return this.#map;}
+    get obj() {return Object.fromEntries(this.#map.entries());}
 
     entries() {
         return this.#map.entries();
