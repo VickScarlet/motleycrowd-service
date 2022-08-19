@@ -107,6 +107,7 @@ export default class Game extends IModule {
 
     #newRoom(type, metas) {
         const room = new Room(this, this.#types[type]);
+        room.meta.type = type;
         for (const m in metas)
             room.meta[m] = metas[m];
         return room;
@@ -155,7 +156,9 @@ export default class Game extends IModule {
         return this.$core.question.random(users);
     }
 
-    settlement(room) {
+    settlement(room, questions, users, scores) {
+        const type = room.meta.type;
         this.#clear(room);
+        this.$core.database.game.save(type, questions, users, scores);
     }
 }

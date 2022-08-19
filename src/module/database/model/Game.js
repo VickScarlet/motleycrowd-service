@@ -9,13 +9,9 @@ export default class Game {
         this.#schema = new Schema({
             id: {type: String, required: true, unique: true, index: true},
             type: {type: Number, required: true},
-            questions: [{
-                id: {type: String, required: true},
-                picked: {type: String, required: true},
-                answer: {type: Map, required: true},
-            }],
+            questions: {type: Array, required: true},
             users: [{type: String, required: true}],
-            score: {type: Map, required: true},
+            scores: {type: Object, required: true},
             created: { type: Date, default: Date.now },
         });
         this.#model = model('Game', this.#schema, collection);
@@ -23,10 +19,10 @@ export default class Game {
     #schema;
     #model;
 
-    async save(type, questions, users, score) {
+    async save(type, questions, users, scores) {
         return this.#model.create({
             id: gid(), type, questions,
-            users, score,
+            users, scores,
         });
     }
 

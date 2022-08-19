@@ -116,32 +116,41 @@ export class Questions {
     settlement(users) {
         const questions = [];
         const score = new Score(users);
+        const answers = {};
+
         for(const {
             id, picked, least,
             answers: answer, judge,
         } of this.#judgeList()) {
+            questions.push([id, picked]);
+
             const scores = judge({score, answer, picked});
-            const answers = users
-                .map(uuid=>{
-                    if(!answer.has(uuid))
-                        return [
-                            uuid,
-                            score.addition(uuid, least)
-                        ];
+            users.forEach(uuid=>{
+                const data = answers[uuid] || [];
+                if(!answers[uuid]) answers[uuid] = data;
+                if(!answer.has(uuid))
+                    return data.push(
+                        score.addition(uuid, least)
+                    );
 
-                    const ans = answer.get(uuid);
-                    return [
-                        uuid,
-                        score.addition(uuid, scores[ans]),
-                        ans
-                    ];
-                });
-
-            questions.push({id, picked, answer: answers});
+                const ans = answer.get(uuid);
+                data.push([
+                    score.addition(uuid, scores[ans]),
+                    ans
+                ]);
+            });
         }
+
+        const usersScores = {};
+        for(const uuid of users)
+            usersScores[uuid] = [
+                score.get(uuid),
+                answers[uuid],
+            ];
+
         return {
             questions,
-            score: score.obj,
+            scores: usersScores,
         }
     }
 

@@ -133,15 +133,11 @@ export default class Room {
         this.#listSend('question', [idx, id, picked]);
     }
 
-    #settlement() {
+    async #settlement() {
         const users = Array.from(this.#users);
-        const {questions, score} = this.#questions.settlement(users);
-        this.#listSend('settlement', {
-            questions,
-            score,
-            users,
-        });
-        this.#game.settlement(this);
+        const {questions, scores} = this.#questions.settlement(users);
+        await this.#listSend('settlement', {questions, scores});
+        this.#game.settlement(this, questions, users, scores);
     }
 
     clear() {
