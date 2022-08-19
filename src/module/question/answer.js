@@ -3,11 +3,14 @@ export default class Answer {
         this.#options = new Set(options);
         options.forEach(ans => {
             this.#counter.set(ans, 0)
+            this.#users.set(ans, new Set());
         });
     }
+    #users = new Map();
     #map = new Map();
     #counter = new Map();
     #options;
+    #cache = new Map();
 
     get size() { return this.#map.size; }
     get counter() { return this.#counter; }
@@ -27,6 +30,8 @@ export default class Answer {
             return false;
         this.#map.set(uuid, answer);
         this.#counter.set(answer, (this.#counter.get(answer)) + 1);
+        this.#users.get(answer).add(uuid);
+        this.#cache.clear();
         return true;
     }
 
@@ -38,6 +43,10 @@ export default class Answer {
         return this.#map.has(uuid)
             ? this.#map.get(uuid)
             : null;
+    }
+
+    users(answer) {
+        return this.#users.get(answer);
     }
 
     count(answer) {return this.#counter.get(answer) || 0;}
@@ -65,6 +74,8 @@ export default class Answer {
     }
 
     same(answer) {
+        if(this.#cache.has('same#'+answer))
+            return this.#cache.get('same#'+answer);
         const count = this.count(answer);
         let same = 0;
 
@@ -72,29 +83,39 @@ export default class Answer {
             if(this.count(option) == count)
                 same ++;
         });
-
+        this.#cache.set('same#'+answer, same);
         return same;
     }
 
     maxsame() {
+        if(this.#cache.has('maxsame'))
+            return this.#cache.get('maxsame');
         const map = {};
         this.#options.forEach(option =>{
             const count = this.count(option)
             map[count] = (map[count] || 0) + 1;
         });
-        return Math.max(Object.values(map));
+        const maxsame = Math.max(Object.values(map));
+        this.#cache.set('maxsame', maxsame);
+        return maxsame;
     }
 
     crank() {
+        if(this.#cache.has('crank'))
+            return this.#cache.get('crank');
+
         const m = {};
         this.#counter.forEach((count, option) => {
             if(m[count]) m[count].push(option);
             else m[count] = [option];
         });
-        return Array
+        const crank = Array
             .from(new Set(this.#counter.values()))
             .sort((a,b)=>b-a)
             .map(count => m[count]);
+
+        this.#cache.set('crank', crank);
+        return crank;
     }
 
 }

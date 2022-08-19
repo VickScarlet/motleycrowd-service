@@ -5,12 +5,13 @@ const clientConfig = {
         // host: 'scarlet-mini',
         host: '127.0.0.1',
         // host: '192.168.50.221',
+        // host: 'motleycrowdservice.syaro.io',
         port: 1919,
         protocol: 'ws',
     },
 };
 
-const count = 119;
+const count = 220;
 global.clients = new Array(count).fill(1).map(()=>new MiniClient(clientConfig));
 console.debug('client %d start', count);
 const start = async client => {

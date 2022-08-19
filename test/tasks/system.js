@@ -1,6 +1,5 @@
-import '../src/global.function.js';
-import Logger from '../src/logger.js';
-import Core from '../src/module/index.js';
+import Logger from '../../src/logger.js';
+import Core from '../../src/module/index.js';
 import MiniClient from '../client/miniclient.js';
 import { MongoClient } from 'mongodb';
 

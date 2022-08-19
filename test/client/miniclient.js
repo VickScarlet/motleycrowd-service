@@ -1,7 +1,7 @@
 import WebSocket from 'ws';
 import { v4 as uuidGenerator } from 'uuid';
 import { unzipSync } from 'zlib';
-import { listRandom } from '../src/functions/index.js';
+import { listRandom } from '../../src/functions/index.js';
 
 class Session {
     constructor({protocol='ws', host, port}, {connect, boardcast, message}) {
@@ -199,6 +199,7 @@ export default class MiniClient {
             case 'game.settlement':
                 await this.delay(15000, 60000);
                 await this.game.pair(Math.random() > 0.9?10:100);
+                // await this.game.pair(10);
                 return;
             case 'game.user':
             case 'game.ready':

@@ -11,8 +11,7 @@
   },
   "scripts": {
     "start": "node .",
-    "test": "mocha",
-    "xlsx2json": "vt transform data/questions.xlsx"
+    "test": "mocha test/tasks"
   },
   "dependencies": {
     "log4js": "^6.6.0",

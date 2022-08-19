@@ -117,29 +117,27 @@ export class Questions {
         const questions = [];
         const score = new Score(users);
         for(const {
-            id, picked, least, size,
+            id, picked, least,
             answers: answer, judge,
         } of this.#judgeList()) {
-            questions.push({
-                id, picked,
-                answer: answer.obj
-            });
-            if(!size)
-                return users.forEach(u=>score.change(u, least));
-            const scores = judge({score, answer});
+            const scores = judge({score, answer, picked});
+            const answers = users
+                .map(uuid=>{
+                    if(!answer.has(uuid))
+                        return [
+                            uuid,
+                            score.addition(uuid, least)
+                        ];
 
-            users.forEach(uuid=>{
-                if(!answer.has(uuid))
-                    return score.change(uuid, least);
-                const s = scores[answer.get(uuid)];
-                if(!s) return;
-                const value = s.value instanceof Function ? s.value() : s.value;
-                switch(s.type) {
-                    case 'buf': return score.buff(uuid, value);
-                    case 'val':
-                    default: return score.change(uuid, value);
-                }
-            });
+                    const ans = answer.get(uuid);
+                    return [
+                        uuid,
+                        score.addition(uuid, scores[ans]),
+                        ans
+                    ];
+                });
+
+            questions.push({id, picked, answer: answers});
         }
         return {
             questions,
