@@ -143,10 +143,10 @@ export default class Room {
     clear() {
         this.#jlBatch.flag = false;
         this.#answerBatch.flag = false;
-        this.#users.clear();
-        this.#live.clear();
-        this.#questions = null;
-        this.#start = false;
-        this.#meta = {};
+        // this.#users.clear();
+        // this.#live.clear();
+        // this.#questions = null;
+        // this.#start = false;
+        // this.#meta = {};
     }
 }
