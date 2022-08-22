@@ -71,7 +71,7 @@ export default class User extends IModule {
         const guestNumber = `#${(this.#counter++).toString(36)}`;
         this.#authenticated.set(sid, guestNumber);
         this.#users.set(guestNumber, {sid, g: true});
-        return [0];
+        return [0, {uid: guestNumber}];
     }
 
     async register(sid, username, password) {
@@ -96,7 +96,7 @@ export default class User extends IModule {
         // record this session
         this.#authenticated.set(sid, uid);
         this.#users.set(uid, {sid, model});
-        return [0];
+        return [0, {uid}];
     }
 
     leave(sid) {
