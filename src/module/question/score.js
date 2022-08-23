@@ -53,7 +53,7 @@ export default class Score {
         const score = Number((last + value || 0).toFixed(2));
         this.#map.set(uuid, score);
         this.#cache.clear();
-        return score - last;
+        return Number((score - last).toFixed(2));
     }
 
     #set(uuid, value) {
@@ -61,7 +61,7 @@ export default class Score {
         const score = Number((value || 0).toFixed(2));
         this.#map.set(uuid, score);
         this.#cache.clear();
-        return score - last;
+        return Number((score - last).toFixed(2));
     }
 
     #addbuff(uuid, value, times) {
