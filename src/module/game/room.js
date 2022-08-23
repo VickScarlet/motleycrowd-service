@@ -147,7 +147,7 @@ export default class Room {
     clear() {
         this.#jlBatch.flag = false;
         this.#answerBatch.flag = false;
-        if(this.#timeout) this.clearTimeout(this.#timeout);
+        if(this.#timeout) clearTimeout(this.#timeout);
         // this.#users.clear();
         // this.#live.clear();
         // this.#questions = null;
