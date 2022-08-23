@@ -52,6 +52,8 @@ export default class Room {
     #questions = null;
     #jlBatch;
     #answerBatch;
+    #timeout;
+    #defaultTimeout = 60 * 1000;
 
     get meta() { return this.#meta; }
     get ready() {return this.#users.size == this.#limit;}
@@ -124,13 +126,15 @@ export default class Room {
     }
 
     #next() {
+        if(this.#timeout) clearTimeout(this.#timeout);
         if(!this.#questions.next())
             return this.#settlement();
 
         const {idx, question: {
-            id, picked
+            id, picked, timeout
         }} = this.#questions;
         this.#listSend('question', [idx, id, picked]);
+        this.#timeout = setTimeout(() => this.#next(), Number(timeout) || this.#defaultTimeout);
     }
 
     async #settlement() {
@@ -143,6 +147,7 @@ export default class Room {
     clear() {
         this.#jlBatch.flag = false;
         this.#answerBatch.flag = false;
+        if(this.#timeout) this.clearTimeout(this.#timeout);
         // this.#users.clear();
         // this.#live.clear();
         // this.#questions = null;

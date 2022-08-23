@@ -2,12 +2,13 @@ import Answer from "./answer.js";
 import Score from "./score.js";
 
 export class Question {
-    constructor({id, question, options, judge, least}, picket) {
+    constructor({id, question, options, judge, least, timeout}, picket) {
         this.#id = id;
         this.#question = question;
         this.#options = options;
         this.#judge = judge;
         this.#least = Number(least) || 0;
+        this.#timeout = timeout;
         this.optionPick(picket);
     }
 
@@ -17,6 +18,7 @@ export class Question {
     #picked;
     #judge;
     #least;
+    #timeout;
 
     #answer;
 
@@ -28,6 +30,7 @@ export class Question {
     get size() {return this.#answer.size;}
     get judge() {return this.#judge;}
     get answers() {return this.#answer;}
+    get timeout() {return this.#timeout;}
     get picked() {return [...this.#picked].sort().join('');}
     set picked(picked) {
         this.#picked = new Set(picked.split(''));
