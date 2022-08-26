@@ -36,6 +36,7 @@ export default class Core {
         });
     }
 
+    #events = new Map();
     #proxy = new Map();
     #proxyR = new Set();
     #database;
@@ -50,6 +51,25 @@ export default class Core {
     get user() { return this.#user; }
     get game() { return this.#game; }
     get session() { return this.#session; }
+
+    on(event, callback) {
+        if(!this.#events.has(event))
+            this.#events.set(event, new Set());
+        const callbacks = this.#events.get(event);
+        callbacks.add(callback);
+    }
+    off(event, callback) {
+        if(!this.#events.has(event)) return;
+        const callbacks = this.#events.get(event);
+        callbacks.delete(callback);
+    }
+    emit(event, data) {
+        if(!this.#events.has(event)) return;
+        const callbacks = this.#events.get(event);
+        callbacks.forEach(callback => {
+            callback(data);
+        });
+    }
 
     proxy(proxy, cmds, requestSid) {
         if(this.#proxy.has(proxy)) {
@@ -85,7 +105,7 @@ export default class Core {
         return true;
     }
 
-    async command(sid, {command, data}) {
+    async useraction(sid, {command, data}) {
         if(!command) return [this.$err.NO_CMD];
         const [p, cmd] = command.split(".");
         const proxy = this.#proxy.get(p);
@@ -111,24 +131,10 @@ export default class Core {
         return this.#session.listSend(sids, [command, await data]);
     }
 
-    async useraction(type, ...args) {
-        try{
-            switch(type) {
-                case 'connected':
-                    return ({
-                        version: "0.0.1"
-                    });
-                case 'message':
-                    return await this.command(...args);
-                case 'close':
-                    return await this.user.leave(args[0]);
-                case 'error':
-                default:
-                    return;
-            }
-        } catch (e) {
-            console.error(e);
-        }
+    baseinfo() {
+        return {
+            version: "0.0.1"
+        };
     }
 
     get state() {

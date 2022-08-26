@@ -31,6 +31,7 @@ const core = new Core({
     },
     user: {
         authLimit: 5000,
+        timeout: 30000,
     },
     game: {
         types: {

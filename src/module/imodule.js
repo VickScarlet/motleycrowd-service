@@ -23,6 +23,9 @@ export default class IModule {
     get $err() {return ErrorCode;}
     get $core() { return this.#$core; }
     get $configure() { return this.#$configure; }
+    get $on() { return this.#$core.on.bind(this.#$core); }
+    get $off() { return this.#$core.off.bind(this.#$core); }
+    get $emit() { return this.#$core.emit.bind(this.#$core); }
 
     async initialize() {
         // empty

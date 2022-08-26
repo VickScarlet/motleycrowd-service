@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import IModule from "./imodule.js";
+import { batch } from '../functions/index.js';
 
 /**
  * 用户模块
@@ -19,6 +20,7 @@ export default class User extends IModule {
     }
 
     async initialize() {
+        const { timeout } = this.$configure;
         this.#registerCount = await this.$core.database.kvdata.get('register') || 0;
         this.$core.proxy('user', {
             register: (sid, {username, password}) => this.register(sid, username, password),
@@ -26,6 +28,32 @@ export default class User extends IModule {
             guest: sid => this.guest(sid),
             logout: sid => this.logout(sid),
         }, true);
+        const leave = new Map();
+        const kick = batch(
+            ()=>{
+                const kickset = new Set();
+                const now = Date.now();
+                leave.forEach((leavetime, sid)=>{
+                    if(leavetime+timeout>now) return;
+                    leave.delete(sid);
+                    this.#authenticated.delete(sid);
+                    const uid = this.uid(sid);
+                    if(!uid) return;
+                    kickset.add(uid);
+                    this.#users.delete(uid);
+                });
+                if(kickset.size)
+                    this.$emit('user.leave', kickset);
+                if(leave.size) kick();
+            },
+            timeout
+        );
+        this.$on('session.close', sid=>{
+            if(!this.isAuthenticated(sid)) return;
+            leave.set(sid, Date.now());
+            kick();
+        })
+        this.$on('session.resume', sid=>leave.delete(sid));
     }
 
     isAuthenticated(sid) {
@@ -56,14 +84,17 @@ export default class User extends IModule {
         // check password
         if(model.password !== this.#passwordEncrypt(password)) return [this.$err.PASSWORD_ERROR];
         // last session
-        const lastSid = this.#users.get(uid);
-        // kick last session
-        this.$core.session.close(lastSid, 3001, 'AAuth');
-        this.#authenticated.delete(lastSid);
+        if(this.#users.has(uid)) {
+            const {sid: last} = this.#users.get(uid);
+            // kick last session
+            this.$core.session.close(last, 3001, 'AAuth');
+            this.#authenticated.delete(last);
+        }
         // record this session
         this.#users.set(uid, {sid, model});
         this.#authenticated.set(sid, uid);
         this.#lock.delete(username);
+        this.$emit('user.authenticated', uid);
         return [0, {uid}];
     }
 
@@ -99,17 +130,14 @@ export default class User extends IModule {
         return [0, {uid}];
     }
 
-    leave(sid) {
-        return this.logout(sid);
-    }
-
     logout(sid) {
         const uid = this.#authenticated.get(sid);
-        if(uid) {
-            this.$core.game.leave(uid);
-            this.#users.delete(uid);
-            this.#authenticated.delete(sid);
-        }
+        if(!uid) return [0];
+
+        this.#authenticated.delete(sid);
+        this.#users.delete(uid);
+        this.$emit('user.leave', new Set([uid]));
+
         return [0];
     }
 

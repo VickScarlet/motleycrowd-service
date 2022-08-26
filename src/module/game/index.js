@@ -34,6 +34,15 @@ export default class Game extends IModule {
             leave: uid => this.leave(uid),
             answer: (uid, [idx, answer]) => this.answer(uid, answer, idx),
         });
+        this.$on('user.leave', uid => this.leave(uid));
+        this.$on('user.authenticated', uid => this.#resume(uid));
+    }
+
+    async #resume(uid) {
+        if(!this.#userRoom.has(uid)) return;
+        const room = this.#userRoom.get(uid);
+        const data = await room.resume(uid);
+        this.$core.send(uid, `game.resume`, data);
     }
 
     async join(uid, roomId) {

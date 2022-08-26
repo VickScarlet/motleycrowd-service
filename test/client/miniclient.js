@@ -18,18 +18,19 @@ class Session {
     #PONG = 2;
     #MESSAGE = 3
     #REPLY = 4;
+    #RESUME = 5;
     #BORDERCAST = 9;
 
     #protocol;
     #host;
     #port;
-    #ws = null;
+    #client = null;
     #callbacks = new Map();
     #online = NaN;
     #delay = NaN;
     #lastping = 0;
     #onconnect;
-    #suid;
+    #sid;
 
     get #needping() {
         return Date.now() - this.#lastping > 60000;
@@ -49,31 +50,61 @@ class Session {
         return `${this.#protocol}://${window.location.host}`;
     }
 
-    async #connect() {
+    async #ws(onmessage, onclose) {
         return new Promise((resolve, reject) => {
-            const start = Date.now();
-            const done = async (data, [online, suid])=>{
-                this.#delay = Date.now() - start;
-                this.#online = online;
-                this.#suid = suid;
-                await this.#onconnect(data, online);
-                resolve();
-            }
-            this.#callbacks.set(this.#CONNECT, done);
-            this.#ws = new WebSocket(this.#url);
-            this.#ws.on('message', data => this.#onmessage(data));
-            this.#ws.on('close', ({code, reason}) => this.#onclose(code, reason));
-            this.#ws.on('error', e => reject(e));
+            const ws = new WebSocket(this.#url);
+            ws.addEventListener('open', _ => resolve(ws));
+            ws.addEventListener('error', e => reject(e));
+            ws.addEventListener('message', async ({data}) => {
+                try {
+                    onmessage(JSON.parse(data))
+                } catch (e) {
+                    onmessage(JSON.parse(unzipSync(data).toString()));
+                }
+            });
+            ws.addEventListener('close', onclose);
         });
     }
 
-    async #onmessage(message) {
-        try {
-            message = JSON.parse(message.toString());
-        } catch (e) {
-            message = JSON.parse(unzipSync(message).toString());
-        }
-        const [guid, content, attach] = message;
+    async #connect() {
+        return new Promise(async resolve => {
+            const client = await this.#ws(
+                data => {
+                    if(data[0]!==this.#CONNECT)
+                        return this.#onmessage(data);
+                    const [, info, sid, online] = data;
+                    this.#client = client;
+                    this.#online = online;
+                    this.#sid = sid;
+                    this.#onconnect(info, online);
+                    resolve();
+                },
+                ({code, reason}) => this.#onclose(code, reason),
+            );
+            client.send(JSON.stringify([this.#CONNECT]));
+        });
+    }
+
+    async #resume() {
+        return new Promise(async (resolve, reject) => {
+            const client = await this.#ws(
+                data => {
+                    if(data[0]!==this.#RESUME)
+                        return this.#onmessage(data);
+                    const [, success, online] = data;
+                    this.#online = online;
+                    if(!success)
+                        return reject (new Error(`RESUME failed`));
+                    this.#client = client;
+                    resolve();
+                },
+                ({code, reason}) => this.#onclose(code, reason),
+            );
+            client.send(JSON.stringify([this.#RESUME, this.#sid]));
+        });
+    }
+
+    async #onmessage([guid, content, attach]) {
         const callback = index=>{
             if(!this.#callbacks.has(index)) return;
             this.#callbacks.get(index)(content, attach);
@@ -90,7 +121,6 @@ class Session {
             case this.#BORDERCAST:
                 this.#callbacks.get(guid)(content, attach);
                 break;
-            case this.#CONNECT:
             case this.#REPLY:
             default:
                 callback(guid);
@@ -98,21 +128,27 @@ class Session {
         }
     }
 
-    #onclose(code, reason) {
-        this.#ws = null;
+    #onclose(code) {
+        this.#client = null;
+        switch(code) {
+            case 3000:
+            case 3001:
+                return;
+        }
+        this.#resume();
     }
 
     #send(data) {
-        this.#ws.send(JSON.stringify(data));
+        this.#client.send(JSON.stringify(data));
     }
 
     close() {
-        this.#ws.close();
+        this.#client.close();
     }
 
     #ping() {
         return new Promise((resolve, reject) => {
-            if(!this.#ws) return reject('not connected');
+            if(!this.#client) return reject('not connected');
             let called = false;
             const start = Date.now();
             const done = online=>{
@@ -152,7 +188,7 @@ class Session {
     }
 
     async ping() {
-        if(this.#ws && this.#needping) {
+        if(this.#client && this.#needping) {
             this.#lastping = Date.now();
             return this.#ping();
         }
@@ -198,8 +234,8 @@ export default class MiniClient {
                 return;
             case 'game.settlement':
                 await this.delay(15000, 60000);
-                await this.game.pair(Math.random() > 0.9?10:100);
-                // await this.game.pair(10);
+                // await this.game.pair(Math.random() > 0.9?10:100);
+                await this.game.pair(10);
                 return;
             case 'game.user':
             case 'game.ready':

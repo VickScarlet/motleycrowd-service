@@ -1,4 +1,5 @@
 import { delay, batch } from '../../functions/index.js';
+import Database from '../database/index.js';
 export default class Room {
     constructor(game, {limit, pool}) {
         this.#game = game;
@@ -53,6 +54,7 @@ export default class Room {
     #jlBatch;
     #answerBatch;
     #timeout;
+    #left = ()=>0;
     #defaultTimeout = 60 * 1000;
 
     get meta() { return this.#meta; }
@@ -134,7 +136,10 @@ export default class Room {
             id, picked, timeout
         }} = this.#questions;
         this.#listSend('question', [idx, id, picked]);
-        this.#timeout = setTimeout(() => this.#next(), Number(timeout) || this.#defaultTimeout);
+        const start = Date.now();
+        const t = Number(timeout) || this.#defaultTimeout;
+        this.#left = ()=>start+t-Date.now();
+        this.#timeout = setTimeout(() => this.#next(), t);
     }
 
     async #settlement() {
@@ -153,5 +158,20 @@ export default class Room {
         // this.#questions = null;
         // this.#start = false;
         // this.#meta = {};
+    }
+
+    async resume(uid) {
+        const info = await this.info();
+        const start = this.#start;
+        if(!start) return {info, start};
+
+        const {idx, question} = this.#questions;
+        const {id, picked, size} = question;
+        const answer = question.get(uid);
+        const left = this.#left();
+        return { info, start,
+            question: {idx, id, picked, left, size, answer},
+        };
+
     }
 }
