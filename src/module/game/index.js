@@ -36,6 +36,7 @@ export default class Game extends IModule {
         });
         this.$on('user.leave', uid => this.leave(uid));
         this.$on('user.authenticated', uid => this.#resume(uid));
+        this.$on('user.pending', uid => this.#pending(uid));
     }
 
     async #resume(uid) {
@@ -43,6 +44,12 @@ export default class Game extends IModule {
         const room = this.#userRoom.get(uid);
         const data = await room.resume(uid);
         this.$core.send(uid, `game.resume`, data);
+    }
+
+    #pending(uid) {
+        const room = this.#userRoom.get(uid);
+        if(!room || room.start) return;
+        this.leave(uid);
     }
 
     async join(uid, roomId) {
@@ -85,8 +92,12 @@ export default class Game extends IModule {
         if(!this.#userRoom.has(uid)) return [0];
         const room = this.#userRoom.get(uid)
         this.#userRoom.delete(uid);
-        if(!!room.leave(uid)) return [0];
-        this.#clear(room);
+        if(!room.leave(uid)) {
+            this.#clear(room);
+        } else if(!room.start) {
+            const pending = this.#pairPending.get(room.meta.type);
+            pending.unshift(room);
+        }
         return [0];
     }
 

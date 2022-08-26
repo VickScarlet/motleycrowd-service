@@ -52,6 +52,8 @@ export default class User extends IModule {
             if(!this.isAuthenticated(sid)) return;
             leave.set(sid, Date.now());
             kick();
+            const uid = this.uid(sid);
+            this.$emit('user.pending', uid);
         })
         this.$on('session.resume', sid=>leave.delete(sid));
     }

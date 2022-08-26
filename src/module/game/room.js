@@ -59,6 +59,7 @@ export default class Room {
 
     get meta() { return this.#meta; }
     get ready() {return this.#users.size == this.#limit;}
+    get start() {return this.#start; }
     get users() {return this.#users;}
     get live() {return this.#live;}
     get questions() { return this.#questions; }
