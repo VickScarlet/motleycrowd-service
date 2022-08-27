@@ -2,14 +2,14 @@ import Answer from "./answer.js";
 import Score from "./score.js";
 
 export class Question {
-    constructor({id, question, options, judge, least, timeout}, picket) {
+    constructor({id, question, options, judge, least, timeout}, picked) {
         this.#id = id;
         this.#question = question;
         this.#options = options;
         this.#judge = judge;
         this.#least = Number(least) || 0;
         this.#timeout = timeout;
-        this.optionPick(picket);
+        this.optionPick(picked);
     }
 
     #id;
@@ -112,10 +112,6 @@ export class Questions {
         return question.size;
     }
 
-    #judgeList() {
-        return this.#questions;
-    }
-
     settlement(users) {
         const questions = [];
         const score = new Score(users);
@@ -124,10 +120,16 @@ export class Questions {
         for(const {
             id, picked, least,
             answers: answer, judge,
-        } of this.#judgeList()) {
+        } of this.#questions) {
             questions.push([id, picked]);
 
             const scores = judge({score, answer, picked});
+            console.info(
+                '[judge]', id, picked,
+                JSON.stringify(scores),
+                JSON.stringify(Object.fromEntries(answer.counter)),
+                JSON.stringify(Object.fromEntries(answer.map)),
+            );
             users.forEach(uuid=>{
                 const data = answers[uuid] || [];
                 if(!answers[uuid]) answers[uuid] = data;
@@ -151,6 +153,11 @@ export class Questions {
                 answers[uuid],
             ];
 
+        console.info(
+            '[judge] final',
+            JSON.stringify(usersScores),
+            '\n',
+        );
         return {
             questions,
             scores: usersScores,
