@@ -39,17 +39,34 @@ export default class Game extends IModule {
         this.$on('user.pending', uid => this.#pending(uid));
     }
 
+    #leave(uid) {
+        if(!this.#userRoom.has(uid)) return;
+        const room = this.#userRoom.get(uid);
+        this.#userRoom.delete(uid);
+        if(!room.leave(uid)) {
+            this.#clear(room);
+        } else if(!room.start) {
+            const pending = this.#pairPending.get(room.meta.type);
+            if(pending.includes(room)) return;
+            pending.unshift(room);
+        }
+    }
+
     async #resume(uid) {
         if(!this.#userRoom.has(uid)) return;
         const room = this.#userRoom.get(uid);
         const data = await room.resume(uid);
+        if(!data) {
+            this.#leave(uid);
+            return;
+        }
         this.$core.send(uid, `game.resume`, data);
     }
 
     #pending(uid) {
         const room = this.#userRoom.get(uid);
         if(!room || room.start) return;
-        this.leave(uid);
+        this.#leave(uid);
     }
 
     async join(uid, roomId) {
@@ -63,15 +80,18 @@ export default class Game extends IModule {
 
     async pair(uid, type) {
         type = type&&''+type;
-        // TODO: pair type;
-        // logger.debug("[Game|pair] [type:%s] [uid:%s]", type, uid);
         if(this.#userRoom.has(uid)) return [this.$err.GAME_IN_ROOM];
         if(!this.#types.propertyIsEnumerable(type)) return [this.$err.NO_GAME_TYPE];
         const pending = this.#pairPending.get(type);
         let room;
         if(pending.length > 0) {
             room = pending[0];
-        } else {
+            if(room.start || room.full) {
+                pending.shift();
+                room = null;
+            }
+        }
+        if(!room) {
             room = this.#newRoom(type, { private: false });
             this.#pairs.add(room);
             pending.push(room);
@@ -80,7 +100,7 @@ export default class Game extends IModule {
         room.join(uid);
         this.#userRoom.set(uid, room);
 
-        if(room.ready) {
+        if(room.full) {
             pending.shift();
         }
 
@@ -89,15 +109,7 @@ export default class Game extends IModule {
     }
 
     async leave(uid) {
-        if(!this.#userRoom.has(uid)) return [0];
-        const room = this.#userRoom.get(uid)
-        this.#userRoom.delete(uid);
-        if(!room.leave(uid)) {
-            this.#clear(room);
-        } else if(!room.start) {
-            const pending = this.#pairPending.get(room.meta.type);
-            pending.unshift(room);
-        }
+        this.#leave(uid);
         return [0];
     }
 

@@ -1,11 +1,9 @@
 import { delay, batch } from '../../functions/index.js';
-import Database from '../database/index.js';
 export default class Room {
     constructor(game, {limit, pool}) {
         this.#game = game;
         this.#limit = limit;
-        this.#pool = pool;
-
+        this.#questions = this.#game.randomQuestion(pool);
         // join leave batch
         this.#jlBatch = batch(
             async last=>{
@@ -33,10 +31,11 @@ export default class Room {
 
         // answer batch
         this.#answerBatch = batch(
-            ()=>this.#listSend('answer', [
-                this.#questions.idx,
-                this.#questions.currentAnswerSize
-            ]),
+            ()=>{
+                if(this.#questions.end) return;
+                const {idx, question: {size}} = this.#questions;
+                this.#listSend('answer', [idx, size])
+            },
             this.#batchTick,
         )
     }
@@ -44,7 +43,6 @@ export default class Room {
     #meta = {};
     #game;
     #limit;
-    #pool;
     #startWait = 3000;
     #batchTick = 5000;
     #users = new Set();
@@ -58,7 +56,7 @@ export default class Room {
     #defaultTimeout = 60 * 1000;
 
     get meta() { return this.#meta; }
-    get ready() {return this.#users.size == this.#limit;}
+    get full() {return this.#users.size >= this.#limit;}
     get start() {return this.#start; }
     get users() {return this.#users;}
     get live() {return this.#live;}
@@ -78,20 +76,19 @@ export default class Room {
     }
 
     join(uid) {
-        if(this.ready) return false;
+        if(this.full) return false;
         this.#jlBatch();
         this.#users.add(uid);
         this.#live.add(uid);
-        if(this.ready)
+        if(this.full)
             (async ()=>{
                 await this.#listSend('ready', this.#startWait);
                 await delay(this.#startWait);
-                if(!this.ready) {
+                if(!this.full) {
                     await this.#listSend('pending', this.#users.size);
                     return;
                 }
                 this.#start = true;
-                this.#questions = this.#game.randomQuestion(this.#pool);
                 this.#next();
             })();
         return true;
@@ -108,22 +105,20 @@ export default class Room {
         return this.#users.size;
     }
 
-    answer(uid, answer, idx) {
+    answer(uid, answer, i) {
         if(!this.#start) return false;
-        if(this.#questions.has(uid)|| idx != this.#questions.idx)
+        const {idx, question} = this.#questions;
+        if(question.has(uid)|| idx != i)
             return false;
-        if(!this.#questions.answer(uid, answer)) return false;
+        if(!question.answer(uid, answer)) return false;
         this.#answerBatch();
         this.#checktonext();
         return true;
-
     }
 
-    async #checktonext() {
-        await delay(3000);
-        if( !this.#questions
-            || this.#questions.currentAnswerSize < this.#live.size
-        ) return;
+    #checktonext() {
+        const {question} = this.#questions;
+        if(!question || question.size < this.#live.size) return;
         this.#answerBatch.flag = false;
         this.#next();
     }
@@ -154,11 +149,6 @@ export default class Room {
         this.#jlBatch.flag = false;
         this.#answerBatch.flag = false;
         if(this.#timeout) clearTimeout(this.#timeout);
-        // this.#users.clear();
-        // this.#live.clear();
-        // this.#questions = null;
-        // this.#start = false;
-        // this.#meta = {};
     }
 
     async resume(uid) {
@@ -167,6 +157,7 @@ export default class Room {
         if(!start) return {info, start};
 
         const {idx, question} = this.#questions;
+        if(!question) return null;
         const {id, picked, size} = question;
         const answer = question.get(uid);
         const left = this.#left();

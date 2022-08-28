@@ -1,17 +1,19 @@
 import IModule from '../imodule.js';
-import {Question, Questions} from './question.js';
-import {meta, pick} from './subjects/meta.js';
-
+import {Question, Questions} from './subjects/index.js';
 export default class QuestionHelper extends IModule {
-    get(question, picked) {
-        const data = meta(question);
-        if(!data) return null;
-        return new Question(data, picked);
+    get(qid, picked) {
+        return Question.get(qid, picked);
+    }
+
+    pool(pool) {
+        return Questions.get(pool);
+    }
+
+    pick(questions) {
+        return Questions.pick(questions);
     }
 
     random(tag) {
-        const metas = pick(tag);
-        if(!metas) return null;
-        return new Questions({questions: metas});
+        return this.pool(tag);
     }
 }

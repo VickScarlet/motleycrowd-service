@@ -19,6 +19,7 @@ export function listRandom(list) {
 
 export async function delay(min, max) {
     const time = max? Math.random() * (max - min) + min : min;
+    if(!time) return;
     await new Promise(resolve => setTimeout(resolve, time));
 }
 
