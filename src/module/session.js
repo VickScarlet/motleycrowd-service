@@ -1,40 +1,74 @@
+/**
+ * @typedef {string} sid
+ * @typedef {{host: string, port: number}} configure
+ */
 import { WebSocket, WebSocketServer } from 'ws';
 import { v4 as uuidGenerator } from 'uuid';
 import { gzipSync } from 'zlib';
 import IModule from "./imodule.js";
 
+/** 会话模块 */
 export default class Session extends IModule {
+    /** @private 连接 @readonly */
     #CONNECT = 0;
+    /** @private ping @readonly */
     #PING = 1;
+    /** @private pong @readonly */
     #PONG = 2;
+    /** @private 消息 @readonly */
     #MESSAGE = 3
+    /** @private 回复 @readonly */
     #REPLY = 4;
+    /** @private 恢复 @readonly */
     #RESUME = 5;
+    /** @private 广播 @readonly */
     #BORDERCAST = 9;
+
+
+    /** @private WebSocketServer @type {WebSocketServer} */
     #wss;
+    /** @private 会话索引 @type {Map<sid, WebSocket>} */
     #sessions = new Map();
     #onPone = new Map();
 
+    /** @readonly 状态 @type {number} */
     get state() {
         return {
             online: this.online,
         }
     }
+    /** @readonly 在线人数 @type {number} */
     get online() { return this.#sessions.size }
 
+    /**
+     * @override
+     * @returns {Promise<void>}
+     */
     async initialize() {
+        /** @type {configure} */
         const {host, port} = this.$configure;
         const wss = new WebSocketServer({host, port});
         this.#wss = wss;
         wss.on('connection', session => this.#connection(session));
     }
 
+    /**
+     * 打包数据
+     * @param {any} data
+     * @returns {Promise<string|Buffer>}
+     */
     async #packet(data) {
         const serializeData = JSON.stringify(data);
         if(serializeData.length < 1024) return serializeData;
         return gzipSync(serializeData);
     }
 
+    /**
+     * 客户端连接
+     * @private
+     * @param {WebSocket} session
+     * @returns {void}
+     */
     #connection(session) {
         let sid = uuidGenerator();
         const resume = lastSid=>{
@@ -53,6 +87,13 @@ export default class Session extends IModule {
         resume(sid);
     }
 
+    /**
+     * 客户端关闭
+     * @private
+     * @param {sid} sid
+     * @param {WebSocket} session
+     * @returns {void}
+     */
     async #sessionClose(sid, session) {
         if(!this.#sessions.has(sid)) return;
         this.#sessions.delete(sid);
@@ -62,10 +103,26 @@ export default class Session extends IModule {
         this.$emit('session.close', sid);
     }
 
+    /**
+     * 发送消息
+     * @private
+     * @param {WebSocket} session
+     * @param {any} data
+     * @returns {Promise<boolean>}
+     */
     async #send(session, data) {
         return new Promise(resolve=>session.send(data,err=>resolve(!err)));
     }
 
+    /**
+     * 客户端消息
+     * @private
+     * @param {sid} sid
+     * @param {any} message
+     * @param {WebSocket} session
+     * @param {function} resume
+     * @returns {Promise<void>}
+     */
     async #sessionMessage(sid, message, session, resume) {
         const [guid, ...receive] = JSON.parse(message.toString());
         let data;
@@ -100,12 +157,23 @@ export default class Session extends IModule {
         await this.#send(session, packet);
     }
 
+    /**
+     * 广播消息
+     * @param {any} message
+     * @returns {Promise<void>}
+     */
     async broadcast(message) {
         if(!this.#sessions.size) return;
         message = await this.#packet([this.#BORDERCAST, message, this.online]);
         this.#sessions.forEach(session => session.send(message));
     }
 
+    /**
+     * 发送消息
+     * @param {sid} sid
+     * @param {any} message
+     * @returns {Promise<boolean>}
+     */
     async send(sid, message) {
         const session = this.#sessions.get(sid);
         if(!session) return;
@@ -113,6 +181,12 @@ export default class Session extends IModule {
         await this.#send(session, message);
     }
 
+    /**
+     * 组发送消息
+     * @param {sid[]} sids
+     * @param {any} message
+     * @returns {Promise<boolean[]>}
+     */
     async listSend(sids, message) {
         const sessions = sids
             .map(sid => this.#sessions.get(sid))
@@ -124,12 +198,25 @@ export default class Session extends IModule {
         );
     }
 
+
+    /**
+     * 关闭连接
+     * @param {sid} sids
+     * @param {number|undefined} code
+     * @param {string|undefined} reason
+     * @returns {Promise<void>}
+     */
     async close(sid, code, reason) {
         const session = this.#sessions.get(sid);
         if(!session) return;
-        await session.close(code||3000, reason||"");
+        session.close(code||3000, reason||"");
     }
 
+    /**
+     * ping
+     * @param {sid} sids
+     * @returns {Promise<boolean>}
+     */
     async ping(sid) {
         const session = this.#sessions.get(sid);
         if(!session) return false;
@@ -137,7 +224,6 @@ export default class Session extends IModule {
         return new Promise(async (resolve, reject) => {
             const timeout = setTimeout(() => {
                 this.#onPone.delete(sid);
-                // logger.debug('[Session|pong] [ssid:%s] timeout', sid.substring(0,8));
                 reject(new Error('timeout'));
             }, 15000);
             const done = ()=>{
@@ -149,6 +235,10 @@ export default class Session extends IModule {
         });
     }
 
+    /**
+     * @override
+     * @returns {Promise<void>}
+     */
     async shutdown() {
         if(!this.#wss) return;
         return new Promise((resolve, reject) => {

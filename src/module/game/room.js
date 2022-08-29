@@ -1,9 +1,38 @@
+/**
+ * @typedef {{limit: number, pool: number}} configure
+ */
 import { delay, batch } from '../../functions/index.js';
 export default class Room {
-    constructor(game, {limit, pool}) {
+    /**
+     * @typedef {import('./index').uid} uid
+     * @typedef {import('./index').default} Game
+     * @typedef {import('./index').Questions} Questions
+     * @typedef {import('./index').questions} questions
+     * @typedef {import('./index').scores} scores
+     * @callback settlement
+     * @param {{
+     *      questions: questions,
+     *      users: uid[],
+     *      scores: scores
+     * }} data
+     * @returns {void}
+     * @callback pick
+     * @param {number} pool
+     * @returns {Questions}
+     */
+    /**
+     * @constructor
+     * @param {Game} game
+     * @param {configure} configure
+     * @param {pick} pick
+     * @param {settlement} settlement
+     * @returns {Room}
+     */
+    constructor(game, {limit, pool}, pick, settlement) {
         this.#game = game;
         this.#limit = limit;
-        this.#questions = this.#game.randomQuestion(pool);
+        this.#questions = pick(pool);
+        this.#finalSettlement = settlement;
         // join leave batch
         this.#jlBatch = batch(
             async last=>{
@@ -40,34 +69,68 @@ export default class Room {
         )
     }
 
+    /** @private 元数据 @type {object} */
     #meta = {};
+    /** @private 父game对象 @type {Game} */
     #game;
+    /** @private 人数限制 @type {number} */
     #limit;
+    /** @private 开局等待 @type {number} */
     #startWait = 3000;
+    /** @private 批量间隔 @type {number} */
     #batchTick = 5000;
+    /** @private 开局用户集合 @type {Set<string>} */
     #users = new Set();
+    /** @private 活跃用户集合 @type {Set<string>} */
     #live = new Set();
+    /** @private 是否开始游戏 @type {boolean} */
     #start = false;
+    /** @private @type {Questions} */
     #questions = null;
+    /** @private 批量发送 加入/退出 人员信息 @type {function} */
     #jlBatch;
+    /** @private 批量发送当前答题人数 @type {function} */
     #answerBatch;
+    /** @private 每题超时句柄 @type {number} */
     #timeout;
+    /** @private 获取剩余时间 @type {function} */
     #left = ()=>0;
+    /** @private 默认超时时间 @type {number} */
     #defaultTimeout = 60 * 1000;
+    /** @private 结算 @type {settlement} */
+    #finalSettlement;
 
+    /** @readonly 元数据 */
     get meta() { return this.#meta; }
+    /** @readonly 是否满员 @type {boolean} */
     get full() {return this.#users.size >= this.#limit;}
+    /** @readonly 是否开始游戏 @type {boolean} */
     get start() {return this.#start; }
+    /** @readonly 开局用户集合 @type {Set<string>} */
     get users() {return this.#users;}
+    /** @readonly 活跃用户集合 @type {Set<string>} */
     get live() {return this.#live;}
+    /** @readonly 题目集 @type {Questions} */
     get questions() { return this.#questions; }
 
+    /**
+     * 整列发送
+     * @private
+     * @param {string} cmd
+     * @param {any} data
+     * @param {string} filter uid
+     * @returns {Promise<boolean>}
+     */
     async #listSend(cmd, data, filter) {
         let uids = Array.from(this.#live);
         if(filter) uids = uids.filter(uid=>uid!=filter);
         return this.#game.listSend(uids, cmd, data);
     }
 
+    /**
+     * 获取基础信息
+     * @returns {Promise<{users, limit: #limit}>}
+     */
     async info() {
         return {
             users: await this.#game.userdata(this.#users),
@@ -75,6 +138,11 @@ export default class Room {
         };
     }
 
+    /**
+     * 加入房间
+     * @param {string} uid
+     * @returns {boolean}
+     */
     join(uid) {
         if(this.full) return false;
         this.#jlBatch();
@@ -94,6 +162,11 @@ export default class Room {
         return true;
     }
 
+    /**
+     * 离开房间
+     * @param {string} uid
+     * @returns {number} 房间活跃人数
+     */
     leave(uid) {
         this.#live.delete(uid);
         if(this.#start) {
@@ -105,6 +178,13 @@ export default class Room {
         return this.#users.size;
     }
 
+    /**
+     * 答题
+     * @param {string} uid
+     * @param {string} answer option
+     * @param {number} i index
+     * @returns {boolean}
+     */
     answer(uid, answer, i) {
         if(!this.#start) return false;
         const {idx, question} = this.#questions;
@@ -116,13 +196,25 @@ export default class Room {
         return true;
     }
 
+    /**
+     * 检查能否下一题
+     * @private
+     * @returns {void}
+     */
     #checktonext() {
-        const {question} = this.#questions;
-        if(!question || question.size < this.#live.size) return;
+        if(!this.#start) return;
+        if(this.#questions.end) return;
+        const q = this.#questions.question;
+        if(q && q.size < this.#live.size) return;
         this.#answerBatch.flag = false;
         this.#next();
     }
 
+    /**
+     * 下一题
+     * @private
+     * @returns {void}
+     */
     #next() {
         if(this.#timeout) clearTimeout(this.#timeout);
         if(!this.#questions.next())
@@ -131,26 +223,51 @@ export default class Room {
         const {idx, question: {
             id, picked, timeout
         }} = this.#questions;
-        this.#listSend('question', [idx, id, picked]);
-        const start = Date.now();
         const t = Number(timeout) || this.#defaultTimeout;
+        this.#listSend('question', [idx, id, picked, t]);
+        const start = Date.now();
         this.#left = ()=>start+t-Date.now();
         this.#timeout = setTimeout(() => this.#next(), t);
     }
 
+    /**
+     * 结算
+     * @private
+     * @returns {Promise<void>}
+     */
     async #settlement() {
         const users = Array.from(this.#users);
         const {questions, scores} = this.#questions.settlement(users);
         await this.#listSend('settlement', {questions, scores});
-        this.#game.settlement(this, questions, users, scores);
+        this.#finalSettlement({questions, users, scores});
     }
 
+    /**
+     * 清理定时器
+     * @returns {void}
+     */
     clear() {
         this.#jlBatch.flag = false;
         this.#answerBatch.flag = false;
         if(this.#timeout) clearTimeout(this.#timeout);
     }
 
+    /**
+     * 恢复状态
+     * @param {string} uid
+     * @returns {Promise<{
+     *      info,
+     *      start: boolean,
+     *      question: {
+     *          idx: number,
+     *          id: string,
+     *          picked: string,
+     *          left: number,
+     *          size: number,
+     *          answer: string | undefined
+     *      } | undefined
+     * }>} 当前状态
+     */
     async resume(uid) {
         const info = await this.info();
         const start = this.#start;
@@ -161,9 +278,11 @@ export default class Room {
         const {id, picked, size} = question;
         const answer = question.get(uid);
         const left = this.#left();
-        return { info, start,
-            question: {idx, id, picked, left, size, answer},
+        return {
+            info, start,
+            question: {
+                idx, id, picked, left, size, answer
+            },
         };
-
     }
 }

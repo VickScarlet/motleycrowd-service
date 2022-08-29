@@ -1,4 +1,12 @@
-import Logger from '../logger.js';
+/**
+ * @typedef {import('./session').sid} sid
+ * @typedef {import('./user').uid} uid
+ * @typedef {[code: number, data: any]} CommandResult
+ * @typedef {(mark: sid|uid, data=)=>Promise<CommandResult>|CommandResult} CommandProxy
+ * @typedef {Map<string, CommandProxy>} ProxyMap
+ * @typedef {(data: any)=>void} EventCallback
+ * @typedef {Set<EventCallback>} EventSet
+ */
 import ErrorCode from './errorcode.js';
 import Database from './database/index.js';
 import Question from './question/index.js';
@@ -7,12 +15,18 @@ import Game from './game/index.js';
 import Session from './session.js';
 import process from 'process';
 
-/**
- * 核心模块
- * @class Core
- * @constructor [{database, user, game, session}]
- */
+/** 核心模块 */
 export default class Core {
+    /**
+     * @constructor
+     * @param {object} conf
+     * @param {import('./database/index').configure} conf.database
+     * @param {import('./question/index').configure} conf.question
+     * @param {import('./user').configure} conf.user
+     * @param {import('./game/index').configure} conf.game
+     * @param {import('./session').configure} conf.session
+     * @returns {Core}
+     */
     constructor({database, question, user, game, session}) {
 
         this.#database = new Database(this, database);
@@ -22,9 +36,6 @@ export default class Core {
         this.#session = new Session(this, session);
 
         process.title = 'Metley Crowd Service';
-        // process.on('uncaughtException', err => {
-        //     console.error(err);
-        // });
         process.on('SIGINT', async ()=>{
             logger.info('[System] recived SIGINT');
             await this.shutdown();
@@ -36,33 +47,65 @@ export default class Core {
         });
     }
 
+    /** @private @type {Map<string, EventSet>}*/
     #events = new Map();
+    /** @private @type {Map<string, ProxyMap>}*/
     #proxy = new Map();
+    /** @private @type {Set<string>} */
     #proxyR = new Set();
+    /** @private 数据库 @type {Database} */
     #database;
+    /** @private 题目 @type {Question} */
     #question;
+    /** @private 用户 @type {User} */
     #user;
+    /** @private 游戏 @type {Game} */
     #game;
+    /** @private 会话 @type {Session} */
     #session;
 
+    /** @readonly 错误码 */
     get $err() {return ErrorCode;}
+    /** @readonly 数据库 */
     get database() { return this.#database; }
+    /** @readonly 题目 */
     get question() { return this.#question; }
+    /** @readonly 用户 */
     get user() { return this.#user; }
+    /** @readonly 游戏 */
     get game() { return this.#game; }
+    /** @readonly 会话 */
     get session() { return this.#session; }
 
+    /**
+     * 监听事件
+     * @param {string} event
+     * @param {EventCallback} callback
+     * @returns {void}
+     */
     on(event, callback) {
         if(!this.#events.has(event))
             this.#events.set(event, new Set());
         const callbacks = this.#events.get(event);
         callbacks.add(callback);
     }
+    /**
+     * 取消监听
+     * @param {string} event
+     * @param {EventCallback} callback
+     * @returns {void}
+     */
     off(event, callback) {
         if(!this.#events.has(event)) return;
         const callbacks = this.#events.get(event);
         callbacks.delete(callback);
     }
+    /**
+     * 发送事件
+     * @param {string} event
+     * @param {any} data
+     * @returns {void}
+     */
     emit(event, data) {
         if(!this.#events.has(event)) return;
         const callbacks = this.#events.get(event);
@@ -71,11 +114,19 @@ export default class Core {
         });
     }
 
+    /**
+     * 设置代理
+     * @param {string} proxy
+     * @param {Object<string, CommandProxy>} cmds
+     * @param {boolean=} requestSid
+     * @returns {void}
+     */
     proxy(proxy, cmds, requestSid) {
         if(this.#proxy.has(proxy)) {
             logger.info('[System] proxy <%s> %s', proxy, 'already exists.');
             return;
         }
+        /** @type {ProxyMap} */
         const map = new Map();
         for(const cmd in cmds)
             map.set(cmd, cmds[cmd]);
@@ -83,6 +134,11 @@ export default class Core {
         if(requestSid) this.#proxyR.add(proxy);
     }
 
+    /**
+     * 初始化
+     * @async
+     * @returns {Promise<void>}
+     */
     async initialize() {
         logger.info('[System]', 'initializing...');
         const start = Date.now();
@@ -94,6 +150,11 @@ export default class Core {
         logger.info('[System]', 'initializeed in', Date.now() - start, 'ms.');
     }
 
+    /**
+     * 关闭
+     * @async
+     * @returns {Promise<void>}
+     */
     async shutdown() {
         logger.info('[System]', 'shutdowning...');
         await this.#session.shutdown();
@@ -105,6 +166,13 @@ export default class Core {
         return true;
     }
 
+    /**
+     * 用户执行命令
+     * @async
+     * @param {sid} sid
+     * @param {{command: string, data: any}} parameters
+     * @returns {Promise<CommandResult>}
+     */
     async useraction(sid, {command, data}) {
         if(!command) return [this.$err.NO_CMD];
         const [p, cmd] = command.split(".");
@@ -119,24 +187,40 @@ export default class Core {
         return proxy.get(cmd)(mark, data);
     }
 
+    /**
+     * 发送消息给用户
+     * @async
+     * @param {uid} uid
+     * @param {string} command
+     * @param {any} data
+     */
     async send(uid, command, data) {
         const sid = this.#user.sid(uid);
         if(!sid) return false;
         return this.#session.send(sid, [command, await data]);
     }
 
+    /**
+     * 组发送消息
+     * @async
+     * @param {uid[]} uids
+     * @param {string} command
+     * @param {any} data
+     */
     async listSend(uids, command, data) {
         const sids = uids.map(uid => this.#user.sid(uid)).filter(sid=>!!sid);
         if(sids.length < 1) return false;
         return this.#session.listSend(sids, [command, await data]);
     }
 
+    /** 基本信息 */
     baseinfo() {
         return {
             version: "0.0.1"
         };
     }
 
+    /** @readonly 基本信息 */
     get state() {
         const { title, pid, platform } = process;
         return {
