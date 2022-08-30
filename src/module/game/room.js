@@ -35,7 +35,7 @@ export default class Room {
         this.#finalSettlement = settlement;
         // join leave batch
         this.#jlBatch = batch(
-            async last=>{
+            last=>{
                 const join = [];
                 const leave = [];
                 for(const uid of this.#users) {
@@ -49,10 +49,7 @@ export default class Room {
 
                 if(!(join.length+leave.length)) return;
 
-                this.#listSend('user', [
-                    await this.#game.userdata(join),
-                    leave
-                ]);
+                this.#listSend('user', [join, leave]);
             },
             this.#batchTick,
             ()=>new Set(this.#users),
@@ -129,11 +126,11 @@ export default class Room {
 
     /**
      * 获取基础信息
-     * @returns {Promise<{users, limit: #limit}>}
+     * @returns {{users: uid[], limit: number}}
      */
-    async info() {
+    get info() {
         return {
-            users: await this.#game.userdata(this.#users),
+            users: Array.from(this.#users),
             limit: this.#limit,
         };
     }
@@ -255,7 +252,7 @@ export default class Room {
     /**
      * 恢复状态
      * @param {string} uid
-     * @returns {Promise<{
+     * @returns {{
      *      info,
      *      start: boolean,
      *      question: {
@@ -266,11 +263,10 @@ export default class Room {
      *          size: number,
      *          answer: string | undefined
      *      } | undefined
-     * }>} 当前状态
+     * }} 当前状态
      */
-    async resume(uid) {
-        const info = await this.info();
-        const start = this.#start;
+    resume(uid) {
+        const {info, start} = this;
         if(!start) return {info, start};
 
         const {idx, question} = this.#questions;

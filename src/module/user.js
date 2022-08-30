@@ -204,7 +204,7 @@ export default class User extends IModule {
         uids = new Set(uids);
         for(let uid of uids) {
             /** @type {model} */
-            const model = await this.model(''+uid);
+            const model = await this.#model(''+uid);
             if(!model) continue;
             datas[uid] = [
                 model.username,
@@ -245,23 +245,12 @@ export default class User extends IModule {
     }
 
     /**
-     * 获取用户数据
-     * @param {uid} uid
-     */
-    async data(uid) {
-        if(this.isGuest(uid)) return {uid, guest: true};
-        /** @type {model} */
-        const model = await this.model(uid);
-        if(!model) return null;
-        return model.toJSON();
-    }
-
-    /**
      * 获取用户model
+     * @private
      * @param {uid} uid
      * @returns {doc|Promise<doc>|undefined}
      */
-    async model(uid) {
+    async #model(uid) {
         if (this.isGuest(uid)) return null;
         if (this.#users.has(uid))
             return this.#users.get(uid).model;

@@ -81,14 +81,13 @@ export default class Game extends IModule {
     /**
      * 用户恢复
      * @private
-     * @async
      * @param {uid} uid
      */
-    async #resume(uid) {
+    #resume(uid) {
         if(!this.#userRoom.has(uid)) return;
         /** @type {Room} */
         const room = this.#userRoom.get(uid);
-        const data = await room.resume(uid);
+        const data = room.resume(uid);
         if(!data) {
             this.#leave(uid);
             return;
@@ -110,29 +109,26 @@ export default class Game extends IModule {
 
     /**
      * 加入房间
-     * @async
      * @param {uid} uid
      * @param {uid} roomId
-     * @returns {CommandResult|Promise<CommandResult>}
+     * @returns {CommandResult}
      */
-    async join(uid, roomId) {
+    join(uid, roomId) {
         if(!this.#privates.has(roomId)) return [1];
         /** @type {Room} */
         const room = this.#privates.get(roomId);
         room.join(uid);
         this.#userRoom.set(uid, room);
-        const info = await room.info();
-        return [0, info];
+        return [0, room.info];
     }
 
     /**
      * 匹配房间
-     * @async
      * @param {uid} uid
      * @param {number} type
-     * @returns {CommandResult|Promise<CommandResult>}
+     * @returns {CommandResult}
      */
-    async pair(uid, type) {
+    pair(uid, type) {
         type = type&&''+type;
         if(this.#userRoom.has(uid)) return [this.$err.GAME_IN_ROOM];
         if(!this.#types.propertyIsEnumerable(type)) return [this.$err.NO_GAME_TYPE];
@@ -159,29 +155,26 @@ export default class Game extends IModule {
             pending.shift();
         }
 
-        const info = await room.info();
-        return [0, info];
+        return [0, room.info];
     }
 
     /**
      * 离开房间
-     * @async
      * @param {uid} uid
-     * @returns {CommandResult|Promise<CommandResult>}
+     * @returns {CommandResult}
      */
-    async leave(uid) {
+    leave(uid) {
         this.#leave(uid);
         return [0];
     }
 
     /**
      * 创建房间
-     * @async
      * @param {uid} uid
      * @param {number} type
-     * @returns {CommandResult|Promise<CommandResult>}
+     * @returns {CommandResult}
      */
-    async create(uid, type) {
+    create(uid, type) {
         type = type&&''+type;
         if(this.#userRoom.has(uid)) return [this.$err.GAME_IN_ROOM];
         if(!this.#types.propertyIsEnumerable(type)) return [this.$err.NO_GAME_TYPE];
@@ -195,19 +188,20 @@ export default class Game extends IModule {
         this.#userRoom.set(uid, room);
         room.join(uid);
 
-        const info = await room.info();
-        return [0, {room: roomId, info}];
+        return [0, {
+            room: roomId,
+            info: room.info
+        }];
     }
 
     /**
      * 回答问题
-     * @async
      * @param {uid} uid
      * @param {string} answer
      * @param {number} idx
-     * @returns {CommandResult|Promise<CommandResult>}
+     * @returns {CommandResult}
      */
-    async answer(uid, answer, idx) {
+    answer(uid, answer, idx) {
         if(!this.#userRoom.has(uid)) return [1];
         /** @type {Room} */
         const room = this.#userRoom.get(uid);
@@ -258,36 +252,6 @@ export default class Game extends IModule {
             .map(v=>Math.floor(Math.pair()*v).toString(v))
             .join('');
         return this.#privates.has(id) ? this.#roomId(): id;
-    }
-
-    /**
-     * 获取用户数据
-     * @async
-     * @param {uid|uid[]} uid
-     */
-    async userdata(uid) {
-        if(uid instanceof Set) uid = [...uid];
-        if(uid instanceof Array)
-            return Promise.all(
-                uid.map(u=>this.#userdata(u))
-            );
-        return this.#userdata(u);
-    }
-
-    /**
-     * 获取单个用户数据
-     * @private
-     * @async
-     * @param {uid} uid
-     * @typedef {[uid: uid, isGuest: boolean, username?: string]} userdata
-     * @returns {userdata|Promise<userdata>}
-     */
-    async #userdata(uid) {
-        if(this.$core.user.isGuest(uid)) return [uid, true];
-        const {
-            username
-        } = await this.$core.user.model(uid);
-        return [uid, false, username];
     }
 
     /**
