@@ -37,10 +37,11 @@ export default class User extends IModule {
         const { timeout } = this.$configure;
         this.#registerCount = await this.$core.database.kvdata.get('register') || 0;
         this.$core.proxy('user', {
-            register: (sid, {username, password}) => this.register(sid, username, password),
-            authenticate: (sid, {username, password}) => this.authenticate(sid, username, password),
-            guest: sid => this.guest(sid),
-            logout: sid => this.logout(sid),
+            register: (sid, {username, password}) => this.#register(sid, ''+username, ''+password),
+            authenticate: (sid, {username, password}) => this.#authenticate(sid, ''+username, ''+password),
+            guest: sid => this.#guest(sid),
+            logout: sid => this.#logout(sid),
+            get: (_, {uids}) => this.#get(uids),
         }, true);
         const leave = new Map();
         const kick = batch(
@@ -82,13 +83,14 @@ export default class User extends IModule {
 
     /**
      * 认证
+     * @private
      * @async
      * @param {sid} sid
      * @param {string} username
      * @param {string} password
      * @returns {Promise<CommandResult>}
      */
-    async authenticate(sid, username, password) {
+    async #authenticate(sid, username, password) {
         // check username
         if(!this.#checkUsername(username)) return [this.$err.NO_USER];
 
@@ -128,10 +130,11 @@ export default class User extends IModule {
 
     /**
      * 游客
+     * @private
      * @param {sid} sid
      * @returns {CommandResult}
      */
-    guest(sid) {
+    #guest(sid) {
         const guestNumber = `#${(this.#counter++).toString(36)}`;
         this.#authenticated.set(sid, guestNumber);
         this.#users.set(guestNumber, {sid, g: true});
@@ -140,13 +143,14 @@ export default class User extends IModule {
 
     /**
      * 注册
+     * @private
      * @async
      * @param {sid} sid
      * @param {string} username
      * @param {string} password
      * @returns {Promise<CommandResult>}
      */
-    async register(sid, username, password) {
+    async #register(sid, username, password) {
         // check username
         if(!this.#checkUsername(username)) return [1];
 
@@ -173,10 +177,11 @@ export default class User extends IModule {
 
     /**
      * 登出
+     * @private
      * @param {sid} sid
      * @returns {CommandResult}
      */
-    logout(sid) {
+    #logout(sid) {
         const uid = this.#authenticated.get(sid);
         if(!uid) return [0];
 
@@ -185,6 +190,28 @@ export default class User extends IModule {
         this.$emit('user.leave', new Set([uid]));
 
         return [0];
+    }
+
+    /**
+     * 获取用户数据
+     * @private
+     * @param {uid[]} uids
+     * @returns {Promise<CommandResult>}
+     */
+    async #get(uids) {
+        if(!Array.isArray(uids)) return [this.$err.PARAM_ERROR];
+        const datas = {};
+        uids = new Set(uids);
+        for(let uid of uids) {
+            /** @type {model} */
+            const model = await this.model(''+uid);
+            if(!model) continue;
+            datas[uid] = [
+                model.username,
+                model.meta
+            ];
+        }
+        return [0, datas];
     }
 
     /**
@@ -235,6 +262,7 @@ export default class User extends IModule {
      * @returns {doc|Promise<doc>|undefined}
      */
     async model(uid) {
+        if (this.isGuest(uid)) return null;
         if (this.#users.has(uid))
             return this.#users.get(uid).model;
         return this.$core.database.user.find(uid);

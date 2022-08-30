@@ -4,6 +4,8 @@ const ErrorCode = {
     COMMON_ERR: 1,
     /** @readonly 没有命令 */
     NO_CMD: 1001,
+    /** @readonly 参数错误 */
+    PARAM_ERROR: 1002,
 
     /** @readonly 没有认证 */
     NO_AUTH: 2000,
