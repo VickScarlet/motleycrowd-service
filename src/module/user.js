@@ -2,10 +2,8 @@
  * @typedef {string} uid
  * @typedef {import('./session').sid} sid
  * @typedef {import('./index').CommandResult} CommandResult
- * @typedef {import('./database/index').doc} model
  * @typedef {{timeout: number}} configure
  */
-import crypto from 'crypto';
 import IModule from "./imodule.js";
 import { batch } from '../functions/index.js';
 
@@ -14,7 +12,7 @@ export default class User extends IModule {
 
     /** @private 已认证索引 @type {Map<sid, uid>} */
     #authenticated = new Map();
-    /** @private 用户索引 @type {Map<uid, {sid: string, model: model|undefined, g: boolean|undefined}>} */
+    /** @private 用户索引 @type {Map<uid, {sid: string, g: boolean|undefined}>} */
     #users = new Map();
     /** @private 游客id生成索引 @type {number} */
     #counter = 46656;
@@ -28,6 +26,18 @@ export default class User extends IModule {
         return this.#registerCount;
     }
 
+    proxy() {
+        return [{
+            register: (sid, {username, password}) =>
+                this.#register(sid, ''+username, ''+password),
+            authenticate: (sid, {username, password}) =>
+                this.#authenticate(sid, ''+username, ''+password),
+            guest: sid => this.#guest(sid),
+            logout: sid => this.#logout(sid),
+            get: (_, {uids}) => this.#get(uids),
+        }, true];
+    }
+
     /**
      * @override
      * @returns {Promise<void>}
@@ -35,14 +45,7 @@ export default class User extends IModule {
     async initialize() {
         /** @type {configure} */
         const { timeout } = this.$configure;
-        this.#registerCount = await this.$core.database.kvdata.get('register') || 0;
-        this.$core.proxy('user', {
-            register: (sid, {username, password}) => this.#register(sid, ''+username, ''+password),
-            authenticate: (sid, {username, password}) => this.#authenticate(sid, ''+username, ''+password),
-            guest: sid => this.#guest(sid),
-            logout: sid => this.#logout(sid),
-            get: (_, {uids}) => this.#get(uids),
-        }, true);
+        this.#registerCount = await this.$db.kvdata.get('register') || 0;
         const leave = new Map();
         const kick = batch(
             ()=>{
@@ -105,27 +108,26 @@ export default class User extends IModule {
         }, this.$configure.authLimit);
         // AUTH LIMIT
 
-        // query db
-        const model = await this.$core.database.user.findUserByUsername(username);
-        // not found
-        if(!model) return [this.$err.NO_USER];
-        // founded
-        const {uid} = model;
-        // check password
-        if(model.password !== this.#passwordEncrypt(password)) return [this.$err.PASSWORD_ERROR];
+        // db authenticate
+        const data = await this.$db.user.authenticate(
+            username, password
+        );
+        if(!data) return [this.$err.AUTH_FAILED];
+        const {uid, email, meta, props} = data;
         // last session
         if(this.#users.has(uid)) {
             const {sid: last} = this.#users.get(uid);
             // kick last session
-            this.$core.session.close(last, 3001, 'AAuth');
+            this.$session.close(last, 3001, 'AAuth');
             this.#authenticated.delete(last);
         }
         // record this session
-        this.#users.set(uid, {sid, model});
+        this.#users.set(uid, {sid});
         this.#authenticated.set(sid, uid);
         this.#lock.delete(username);
         this.$emit('user.authenticated', uid);
-        return [0, {uid}];
+        await this.$db.user.cache(uid);
+        return [0, {uid, email, meta, props}];
     }
 
     /**
@@ -161,17 +163,20 @@ export default class User extends IModule {
         // AUTH LIMIT
 
         // check exist
-        if(await this.$core.database.user.findUserByUsername(username))
+        if(await this.$db.user.findByUsername(username))
             return [1];
 
         // register
         const uid = (46656 + ++this.#registerCount).toString(36); // uid by register count
-        await this.$core.database.kvdata.set('register', this.#registerCount);
-        const model = await this.$core.database.user.create(uid, username, this.#passwordEncrypt(password));
-
+        await this.$db.kvdata.set('register', this.#registerCount);
+        const success = await this.$db.user.create(
+            uid, username, password
+        );
+        if(!success) return [1];
         // record this session
         this.#authenticated.set(sid, uid);
-        this.#users.set(uid, {sid, model});
+        this.#users.set(uid, {sid});
+        await this.$db.user.cache(uid);
         return [0, {uid}];
     }
 
@@ -188,7 +193,7 @@ export default class User extends IModule {
         this.#authenticated.delete(sid);
         this.#users.delete(uid);
         this.$emit('user.leave', new Set([uid]));
-
+        this.$db.user.release(uid);
         return [0];
     }
 
@@ -201,15 +206,11 @@ export default class User extends IModule {
     async #get(uids) {
         if(!Array.isArray(uids)) return [this.$err.PARAM_ERROR];
         const datas = {};
-        uids = new Set(uids);
-        for(let uid of uids) {
-            /** @type {model} */
-            const model = await this.#model(''+uid);
-            if(!model) continue;
-            datas[uid] = [
-                model.username,
-                model.meta
-            ];
+        uids = uids.map(uid=>''+uid);
+        uids = [...new Set(uids)].filter(uid=>!this.isGuest(uid));
+        const list = await this.$db.user.findList(uids);
+        for(const {uid, username, meta} of list) {
+            datas[uid] = [username, meta];
         }
         return [0, datas];
     }
@@ -245,34 +246,10 @@ export default class User extends IModule {
     }
 
     /**
-     * 获取用户model
-     * @private
-     * @param {uid} uid
-     * @returns {doc|Promise<doc>|undefined}
-     */
-    async #model(uid) {
-        if (this.isGuest(uid)) return null;
-        if (this.#users.has(uid))
-            return this.#users.get(uid).model;
-        return this.$core.database.user.find(uid);
-    }
-
-    /**
      * 是否为游客
      * @param {uid} uid
      */
     isGuest(uid) {
         return uid[0] == '#';
     }
-
-    /**
-     * 密码加密
-     * @param {password} password
-     */
-    #passwordEncrypt(password) {
-        const sha256 = crypto.createHash('sha256').update(password).digest('hex');
-        const md5 = crypto.createHash('md5').update(password).digest('hex');
-        return crypto.createHash('sha256').update(sha256 + md5).digest('hex');
-    }
-
 }

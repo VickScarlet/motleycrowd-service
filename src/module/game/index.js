@@ -1,7 +1,7 @@
 /**
  * @typedef {import('../user').uid} uid
  * @typedef {import('../question/index').Questions} Questions
- * @typedef {import('./index').CommandResult} CommandResult
+ * @typedef {import('../index').CommandResult} CommandResult
  * @typedef {import('./room').configure} RoomConfigure
  * @typedef {import('../database/model/Game').questions} questions
  * @typedef {import('../database/model/Game').scores} scores
@@ -35,6 +35,15 @@ export default class Game extends IModule {
         }
     }
 
+    proxy() {
+        return [{
+            create: (uid, {type}) => this.create(uid, type),
+            join: (uid, {room}) => this.join(uid, room),
+            pair: (uid, {type}) => this.pair(uid, type),
+            leave: uid => this.leave(uid),
+            answer: (uid, [idx, answer]) => this.answer(uid, answer, idx),
+        }, false];
+    }
 
     /**
      * @override
@@ -47,13 +56,6 @@ export default class Game extends IModule {
         for (const type in types) {
             this.#pairPending.set(type, []);
         }
-        this.$core.proxy('game', {
-            create: (uid, {type}) => this.create(uid, type),
-            join: (uid, {room}) => this.join(uid, room),
-            pair: (uid, {type}) => this.pair(uid, type),
-            leave: uid => this.leave(uid),
-            answer: (uid, [idx, answer]) => this.answer(uid, answer, idx),
-        });
         this.$on('user.leave', uid => this.leave(uid));
         this.$on('user.authenticated', uid => this.#resume(uid));
         this.$on('user.pending', uid => this.#pending(uid));
@@ -221,15 +223,36 @@ export default class Game extends IModule {
             this,
             this.#types[type],
             pool=>this.$core.question.pool(pool),
-            ({questions, users, scores})=>{
-                this.#clear(room);
-                this.$core.database.game.save(type, questions, users, scores);
-            },
+            ()=>this.#settlement(room, type),
         );
         room.meta.type = type;
         for (const m in metas)
             room.meta[m] = metas[m];
         return room;
+    }
+
+    /**
+     * @private
+     * @async
+     * @param {Room} room
+     * @param {string} type
+     */
+    async #settlement(room, type) {
+        const {questions, users} = room;
+        this.#clear(room);
+        const settlement = questions.settlement(users);
+        const meta = questions.meta;
+        const model = await this.$db.game.save(
+            type, meta, [...users], settlement
+        );
+        users.forEach(uid=>{
+            this.$core.send(uid, 'game.settlement', {
+                id: model.id,
+                created: model.created,
+                questions: meta,
+                scores: settlement,
+            });
+        })
     }
 
     /**

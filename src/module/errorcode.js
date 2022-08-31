@@ -1,4 +1,8 @@
-/** @readonly 错误码 */
+/**
+ * 错误码
+ * @readonly
+ * @enum {number}
+ */
 const ErrorCode = {
     /** @readonly 通常错误 */
     COMMON_ERR: 1,

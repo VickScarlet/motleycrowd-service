@@ -1,6 +1,5 @@
 /**
- * @typedef {import('mongoose').Document} doc
- * @typedef {{collection?: string}} ModelConfigure
+ * @typedef {import('./base').configure} ModelConfigure
  * @typedef {{
  *      host: string,
  *      port: number,
@@ -52,11 +51,10 @@ export default class Database extends IModule {
             useNewUrlParser: true,
             dbName, username, password,
         });
-        const {Schema, model} = mongoose;
-        this.#kvdata = new KVData(Schema, model, mc.KVData);
-        this.#user = new User(Schema, model, mc.User);
-        this.#game = new Game(Schema, model, mc.Game);
-        this.#score = new Score(Schema, model, mc.Score);
+        this.#kvdata = new KVData(mc.KVData);
+        this.#user = new User(mc.User);
+        this.#game = new Game(mc.Game);
+        this.#score = new Score(mc.Score);
     }
 
     /** @override */

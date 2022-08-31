@@ -32,7 +32,7 @@ export default class Room {
         this.#game = game;
         this.#limit = limit;
         this.#questions = pick(pool);
-        this.#finalSettlement = settlement;
+        this.#settlement = settlement;
         // join leave batch
         this.#jlBatch = batch(
             last=>{
@@ -95,7 +95,7 @@ export default class Room {
     /** @private 默认超时时间 @type {number} */
     #defaultTimeout = 60 * 1000;
     /** @private 结算 @type {settlement} */
-    #finalSettlement;
+    #settlement;
 
     /** @readonly 元数据 */
     get meta() { return this.#meta; }
@@ -225,18 +225,6 @@ export default class Room {
         const start = Date.now();
         this.#left = ()=>start+t-Date.now();
         this.#timeout = setTimeout(() => this.#next(), t);
-    }
-
-    /**
-     * 结算
-     * @private
-     * @returns {Promise<void>}
-     */
-    async #settlement() {
-        const users = Array.from(this.#users);
-        const {questions, scores} = this.#questions.settlement(users);
-        await this.#listSend('settlement', {questions, scores});
-        this.#finalSettlement({questions, users, scores});
     }
 
     /**

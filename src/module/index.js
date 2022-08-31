@@ -6,6 +6,19 @@
  * @typedef {Map<string, CommandProxy>} ProxyMap
  * @typedef {(data: any)=>void} EventCallback
  * @typedef {Set<EventCallback>} EventSet
+ * @callback on
+ * @param {string} event
+ * @param {EventCallback} callback
+ * @returns {void}
+ * @callback off
+ * @param {string} event
+ * @param {EventCallback} callback
+ * @returns {void}
+ * @callback emit
+ * @param {string} event
+ * @param {any} data
+ * @returns {void}
+ *
  */
 import ErrorCode from './errorcode.js';
 import Database from './database/index.js';
@@ -79,9 +92,7 @@ export default class Core {
 
     /**
      * 监听事件
-     * @param {string} event
-     * @param {EventCallback} callback
-     * @returns {void}
+     * @type {on}
      */
     on(event, callback) {
         if(!this.#events.has(event))
@@ -91,9 +102,7 @@ export default class Core {
     }
     /**
      * 取消监听
-     * @param {string} event
-     * @param {EventCallback} callback
-     * @returns {void}
+     * @type {off}
      */
     off(event, callback) {
         if(!this.#events.has(event)) return;
@@ -102,9 +111,7 @@ export default class Core {
     }
     /**
      * 发送事件
-     * @param {string} event
-     * @param {any} data
-     * @returns {void}
+     * @type {emit}
      */
     emit(event, data) {
         if(!this.#events.has(event)) return;
@@ -116,22 +123,23 @@ export default class Core {
 
     /**
      * 设置代理
-     * @param {string} proxy
-     * @param {Object<string, CommandProxy>} cmds
-     * @param {boolean=} requestSid
+     * @private
+     * @param {string} module
+     * @param {[
+     *      proxy: Object<string, CommandProxy>,
+     *      requestSid?: boolean,
+     * ]=} data
      * @returns {void}
      */
-    proxy(proxy, cmds, requestSid) {
-        if(this.#proxy.has(proxy)) {
-            logger.info('[System] proxy <%s> %s', proxy, 'already exists.');
-            return;
-        }
+    #setProxy(module, data) {
+        if(!data) return;
+        const [proxy, requestSid] = data;
         /** @type {ProxyMap} */
         const map = new Map();
-        for(const cmd in cmds)
-            map.set(cmd, cmds[cmd]);
-        this.#proxy.set(proxy, map);
-        if(requestSid) this.#proxyR.add(proxy);
+        for(const name in proxy)
+            map.set(name, proxy[name]);
+        this.#proxy.set(module, map);
+        if(requestSid) this.#proxyR.add(module);
     }
 
     /**
@@ -147,6 +155,8 @@ export default class Core {
         await this.#user.initialize();
         await this.#game.initialize();
         await this.#session.initialize();
+        this.#setProxy('user', this.#user.proxy());
+        this.#setProxy('game', this.#game.proxy());
         logger.info('[System]', 'initializeed in', Date.now() - start, 'ms.');
     }
 
