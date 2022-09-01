@@ -1,7 +1,7 @@
 /**
  * @typedef {string} uid
  * @typedef {import('./session').sid} sid
- * @typedef {import('./index').CommandResult} CommandResult
+ * @typedef {import('.').CommandResult} CommandResult
  * @typedef {{timeout: number}} configure
  */
 import IModule from "./imodule.js";

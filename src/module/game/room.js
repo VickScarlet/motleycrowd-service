@@ -4,11 +4,11 @@
 import { delay, batch } from '../../functions/index.js';
 export default class Room {
     /**
-     * @typedef {import('./index').uid} uid
-     * @typedef {import('./index').default} Game
-     * @typedef {import('./index').Questions} Questions
-     * @typedef {import('./index').questions} questions
-     * @typedef {import('./index').scores} scores
+     * @typedef {import('.').uid} uid
+     * @typedef {import('.').default} Game
+     * @typedef {import('.').Questions} Questions
+     * @typedef {import('.').questions} questions
+     * @typedef {import('.').scores} scores
      * @callback settlement
      * @param {{
      *      questions: questions,

@@ -33,10 +33,10 @@ export default class Core {
     /**
      * @constructor
      * @param {object} conf
-     * @param {import('./database/index').configure} conf.database
-     * @param {import('./question/index').configure} conf.question
+     * @param {import('./database').configure} conf.database
+     * @param {import('./question').configure} conf.question
      * @param {import('./user').configure} conf.user
-     * @param {import('./game/index').configure} conf.game
+     * @param {import('./game').configure} conf.game
      * @param {import('./session').configure} conf.session
      * @returns {Core}
      */

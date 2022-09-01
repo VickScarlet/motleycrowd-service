@@ -1,7 +1,7 @@
 /**
  * @typedef {import('../user').uid} uid
- * @typedef {import('../question/index').Questions} Questions
- * @typedef {import('../index').CommandResult} CommandResult
+ * @typedef {import('../question').Questions} Questions
+ * @typedef {import('..').CommandResult} CommandResult
  * @typedef {import('./room').configure} RoomConfigure
  * @typedef {import('../database/model/Game').questions} questions
  * @typedef {import('../database/model/Game').scores} scores

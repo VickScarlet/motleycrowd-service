@@ -2,7 +2,7 @@ import ErrorCode from './errorcode.js';
 export default class IModule {
     /**
      * @constructor
-     * @typedef {import('./index').default} Core
+     * @typedef {import('.').default} Core
      * @param {Core} core
      * @param {Object<string, any>} configure
      * @returns {IModule}
@@ -28,11 +28,11 @@ export default class IModule {
     get $core() { return this.#$core; }
     /** @readonly 配置 */
     get $configure() { return this.#$configure; }
-    /** @readonly @type {import('./index').on} */
+    /** @readonly @type {import('.').on} */
     get $on() { return this.#$core.on.bind(this.#$core); }
-    /** @readonly @type {import('./index').off} */
+    /** @readonly @type {import('.').off} */
     get $off() { return this.#$core.off.bind(this.#$core); }
-    /** @readonly @type {import('./index').emit} */
+    /** @readonly @type {import('.').emit} */
     get $emit() { return this.#$core.emit.bind(this.#$core); }
     /** @readonly */
     get $db() { return this.#$core.database; }
@@ -66,7 +66,7 @@ export default class IModule {
     }
 
     /**
-     * @typedef {import('./index').CommandProxy} CommandProxy
+     * @typedef {import('.').CommandProxy} CommandProxy
      * @returns {[
      *      proxy: Object<string, CommandProxy>,
      *      requestSid?: boolean,
