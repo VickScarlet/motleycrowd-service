@@ -7,6 +7,13 @@
  *          ([alter: number, answer: string] | number)[]
  *      ]}
  * } scores
+ * @typedef {Object} gamedata
+ * @property {string} id
+ * @property {number} type
+ * @property {questions} questions
+ * @property {scores} scores
+ * @property {string[]} users
+ * @property {Date} created
  */
 import Base from '../base.js';
 import { v4 as gid } from 'uuid';
@@ -22,6 +29,11 @@ export default class Game extends Base {
         scores: {type: Object, required: true},
         created: { type: Date, default: Date.now },
     };
+    static SchemaOptions = {
+        timestamps: {
+            createdAt: 'created',
+        }
+    };
 
     /**
      * 存档
@@ -32,27 +44,35 @@ export default class Game extends Base {
      * @param {scores} scores
      */
     async save(type, questions, users, scores) {
-        return this.$create({
+        await this.$create({
             id: gid(), type, questions,
             users, scores,
         });
+        return true;
     }
 
     /**
      * 查档
      * @async
      * @param {string} id
+     * @return {gamedata|null}
      */
     async find(id) {
-        return this.$find({id});
+        return this.$find({id}, {__v: 0, _id: 0}).lean();
     }
 
     /**
      * 用户档案id列表
      * @async
      * @param {string} uid
+     * @return {{id: number,  created: Date}[]}
      */
     async userList(uid) {
-        return this.$findMany({users: uid});
+        return this.$findMany(
+            {users: uid},
+            {_id: 0, id: 1, created: {
+                $dateToString: "YYYY-MM-DD HH:mm:ss"
+            }}
+        ).lean();
     }
 }

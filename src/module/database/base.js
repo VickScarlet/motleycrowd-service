@@ -9,17 +9,25 @@ export default class Base {
     static Name;
     /** @static @type {import('mongoose').SchemaDefinition} */
     static Schema;
+    /** @static @type {import('mongoose').SchemaOptions} */
+    static SchemaOptions;
+    /** @static @type {import('mongoose').CompileModelOptions} */
+    static ModelOptions;
     /**
      * @constructor
      * @param {configure} [configure={}]
      */
     constructor({collection}={}) {
-        const schema = new mongoose.Schema(this.$.Schema);
+        const {
+            Name, Schema, SchemaOptions, ModelOptions
+        } = this.$;
+
+        const schema = new mongoose.Schema(
+            Schema, SchemaOptions
+        );
+
         this.#model = mongoose.model(
-            this.$.Name,
-            schema,
-            collection,
-            this.$.Options
+            Name, schema, collection, ModelOptions
         );
     }
     /** @private */
@@ -69,5 +77,9 @@ export default class Base {
 
     $deleteMany(filter, options) {
         return this.#model.deleteMany(filter, options);
+    }
+
+    $aggregate(pipeline, options) {
+        return this.#model.aggregate(pipeline, options);
     }
 }

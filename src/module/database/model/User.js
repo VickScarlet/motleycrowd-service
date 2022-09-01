@@ -22,6 +22,13 @@ export default class User extends Base {
         meta: {type: Object, default: {}},
         props: {type: Object, default: {}},
         created: {type: Date, default: Date.now},
+        updated: {type: Date, default: Date.now},
+    };
+    static SchemaOptions = {
+        timestamps: {
+            createdAt: 'created',
+            updatedAt: 'updated',
+        }
     };
 
     /**
@@ -40,6 +47,17 @@ export default class User extends Base {
         username: new Map(),
         email: new Map(),
     };
+
+    /**
+     * 缓存用户
+     * @private
+     * @param {model} model
+     */
+    #j(model) {
+        if(!model) return null;
+        const {_id, __v, ...obj} = model.toJSON();
+        return obj;
+    }
 
     /**
      * 缓存用户
@@ -93,11 +111,11 @@ export default class User extends Base {
         password = this.#encrypt(password);
         let model = this.#cache.username.get(username);
         if(model) return model.password === password
-                ?model.toJSON() :null;
+                ?this.#j(model) :null;
         model = await this.$find({username, password});
         if(!model) return null;
         this.#cacheIt(model);
-        return model.toJSON();
+        return this.#j(model);
     }
 
     /**
@@ -203,8 +221,7 @@ export default class User extends Base {
      */
     async #findObjectWithCache(type, value) {
         const model = await this.#findWithCache(type, value);
-        if(!model) return null;
-        return model.toJSON();
+        return this.#j(model);
     }
 
     /**
@@ -256,16 +273,14 @@ export default class User extends Base {
         const result = [];
         for (const uid of uids) {
             const model = this.#cache.uid.get(uid);
-            if(model) result.push(model.toJSON());
+            if(model) result.push(this.#j(model));
             else notInCache.push(uid);
         }
         if(notInCache.length < 1) return result;
-        const models = await this.$findMany({
-            uid: { "$in": notInCache }
-        });
-        return [
-            ...result,
-            ...models.map(model=>model.toJSON())
-        ];
+        const models = await this.$findMany(
+            { uid: { "$in": notInCache } },
+            { _id: 0, __v: 0 },
+        ).lean();
+        return [...result, ...models];
     }
 }

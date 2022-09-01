@@ -16,8 +16,10 @@ export default class KVData extends Base {
      * @param {string} key
      */
     async get(key) {
-        const kv = await this.$find({key});
-        if (kv) return kv.value;
+        const kv = await this.$find(
+            {key}, {_id: 0, value: 1}
+        ).lean();
+        return kv?.value;
     }
 
     /**
@@ -27,9 +29,8 @@ export default class KVData extends Base {
      * @param {any} value
      */
     async set(key, value) {
-        const {
-            matchedCount, modifiedCount, upsertedCount
-        } = await this.$update({key}, {value}, {upsert: true});
+        const { matchedCount, modifiedCount, upsertedCount }
+            = await this.$update({key}, {value}, {upsert: true});
         return matchedCount + modifiedCount + upsertedCount > 0;
     }
 }
