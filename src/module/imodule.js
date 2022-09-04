@@ -46,6 +46,8 @@ export default class IModule {
     get $question() { return this.#$core.question; }
     /** @readonly */
     get $rank() { return this.#$core.rank; }
+    /** @readonly */
+    get $reward() { return this.#$core.reward; }
 
     /**
      * 初始化

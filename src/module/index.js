@@ -26,6 +26,7 @@ import Question from './question/index.js';
 import User from './user/index.js';
 import Game from './game/index.js';
 import Rank from './rank.js';
+import Reward from './reward.js';
 import Session from './session.js';
 import process from 'process';
 
@@ -42,13 +43,14 @@ export default class Core {
      * @param {import('./session').configure} conf.session
      * @returns {Core}
      */
-    constructor({database, question, user, game, rank, session}) {
+    constructor({database, question, user, game, rank, reward, session}) {
 
         this.#database = new Database(this, database);
         this.#question = new Question(this, question);
         this.#user = new User(this, user);
         this.#game = new Game(this, game);
         this.#rank = new Rank(this, rank);
+        this.#reward = new Reward(this, reward);
         this.#session = new Session(this, session);
 
         process.title = 'Metley Crowd Service';
@@ -79,6 +81,8 @@ export default class Core {
     #game;
     /** @private 排行榜 @type {Rank} */
     #rank;
+    /** @private 奖励 @type {Reward} */
+    #reward;
     /** @private 会话 @type {Session} */
     #session;
 
@@ -94,6 +98,8 @@ export default class Core {
     get game() { return this.#game; }
     /** @readonly 排行榜 */
     get rank() { return this.#rank; }
+    /** @readonly 奖励 */
+    get reward() { return this.#reward; }
     /** @readonly 会话 */
     get session() { return this.#session; }
 
@@ -162,6 +168,7 @@ export default class Core {
         await this.#user.initialize();
         await this.#game.initialize();
         await this.#rank.initialize();
+        await this.#reward.initialize();
         await this.#session.initialize();
         this.#setProxy('user', this.#user.proxy());
         this.#setProxy('game', this.#game.proxy());
@@ -177,6 +184,8 @@ export default class Core {
     async shutdown() {
         logger.info('[System]', 'shutdowning...');
         await this.#session.shutdown();
+        await this.#reward.shutdown();
+        await this.#rank.shutdown();
         await this.#game.shutdown();
         await this.#user.shutdown();
         await this.#question.shutdown();

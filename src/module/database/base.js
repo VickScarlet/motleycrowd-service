@@ -52,7 +52,7 @@ export default class Base {
 
     $create(data) {
         const model = new this.#model(data);
-        return model.save();
+        return model.save().catch(_=>null);
     }
 
     $update(filter, update, options) {

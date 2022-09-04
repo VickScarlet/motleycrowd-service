@@ -2,17 +2,23 @@
  * @typedef {import('../user').uid} uid
  * @typedef {import('../question').Questions} Questions
  * @typedef {import('..').CommandResult} CommandResult
- * @typedef {import('./room').configure} RoomConfigure
- * @typedef {import('../database/model/Game').questions} questions
- * @typedef {import('../database/model/Game').scores} scores
- * @typedef {{types: {[type: number]: RoomConfigure}}} configure
+ * @typedef {Object} RoomConfigure
+ * @property {number} limit
+ * @property {number} pool
+ * @property {number} reward
+ * @typedef {[ranking: number, reward][]} RewardConfigure
+ * @typedef {Object} configure
+ * @property {[type: number, RoomConfigure][]} types
+ * @property {[type: number, RewardConfigure][]} rewards
  */
 import IModule from "../imodule.js";
 import Room from "./room.js";
+import Reward from "./reward.js";
 
 export default class Game extends IModule {
     /** @private 类型配置 @type {{[type: number]: RoomConfigure}} */
     #types;
+    #rewards;
     /** @private 私人房间 @type {Map<string, Room>} */
     #privates = new Map();
     /** @private 匹配房间 @type {Set<Room>} */
@@ -25,8 +31,9 @@ export default class Game extends IModule {
     /** @readonly 游戏模块状态 */
     get state() {
         const pending = {};
-        for(const type in this.#types)
-            pending[type] = this.#pairPending.get(type).length;
+        this.#types.forEach(
+            type =>pending[type] = this.#pairPending.get(type).length
+        );
         return {
             users: this.#userRoom.size,
             privates: this.#privates.size,
@@ -51,9 +58,13 @@ export default class Game extends IModule {
      */
     async initialize() {
         /** @type {configure} */
-        const {types} = this.$configure;
-        this.#types = types;
-        for (const type in types) {
+        const {types, rewards} = this.$configure;
+        this.#types = new Map(types);
+        this.#rewards = new Map(rewards.map(
+            ([type, rewards]) => [type, new Reward(rewards)]
+        ));
+
+        for (const [type] of types) {
             this.#pairPending.set(type, []);
         }
         this.$on('user.leave', uid => this.leave(uid));
@@ -131,9 +142,8 @@ export default class Game extends IModule {
      * @returns {CommandResult}
      */
     pair(uid, type) {
-        type = type&&''+type;
         if(this.#userRoom.has(uid)) return [this.$err.GAME_IN_ROOM];
-        if(!this.#types.propertyIsEnumerable(type)) return [this.$err.NO_GAME_TYPE];
+        if(!this.#types.has(type)) return [this.$err.NO_GAME_TYPE];
         const pending = this.#pairPending.get(type);
         /** @type {Room} */
         let room;
@@ -177,9 +187,8 @@ export default class Game extends IModule {
      * @returns {CommandResult}
      */
     create(uid, type) {
-        type = type&&''+type;
         if(this.#userRoom.has(uid)) return [this.$err.GAME_IN_ROOM];
-        if(!this.#types.propertyIsEnumerable(type)) return [this.$err.NO_GAME_TYPE];
+        if(!this.#types.has(type)) return [this.$err.NO_GAME_TYPE];
         const roomId = this.#roomId();
         /** @type {Room} */
         const room = this.#newRoom(type, {
@@ -214,20 +223,22 @@ export default class Game extends IModule {
     /**
      * 创建房间
      * @private
-     * @param {string} type
+     * @param {number} type
      * @param {object} metas
      * @returns {Room}
      */
     #newRoom(type, metas) {
+        const { limit, pool, reward } = this.#types.get(type);
+        const questions = this.$question.pool(pool);
         const room = new Room(
-            this,
-            this.#types[type],
-            pool=>this.$core.question.pool(pool),
-            ()=>this.#settlement(room, type),
+            this, limit, questions,
+            ()=>this.#settlement(
+                room, type,
+                this.#rewards.get(reward)
+            ),
         );
         room.meta.type = type;
-        for (const m in metas)
-            room.meta[m] = metas[m];
+        Object.assign(room.meta, metas);
         return room;
     }
 
@@ -236,8 +247,9 @@ export default class Game extends IModule {
      * @async
      * @param {Room} room
      * @param {string} type
+     * @param {Reward} reward
      */
-    async #settlement(room, type) {
+    async #settlement(room, type, reward) {
         const {questions, users} = room;
         this.#clear(room);
         const settlement = questions.settlement(users);
@@ -251,9 +263,9 @@ export default class Game extends IModule {
             id = result.id;
             created = result.created;
             await Promise.allSettled(
-                notGuest.map(uid=>{
+                notGuest.map(async uid=>{
                     const [,,ranking] = settlement[uid];
-                    return this.$rank.addScore(type, uid, ranking);
+                    await this.$reward.reward(uid, reward.get(ranking));
                 })
             );
         }

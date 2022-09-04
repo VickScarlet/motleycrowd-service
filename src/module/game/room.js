@@ -7,31 +7,19 @@ export default class Room {
      * @typedef {import('.').uid} uid
      * @typedef {import('.').default} Game
      * @typedef {import('.').Questions} Questions
-     * @typedef {import('.').questions} questions
-     * @typedef {import('.').scores} scores
-     * @callback settlement
-     * @param {{
-     *      questions: questions,
-     *      users: uid[],
-     *      scores: scores
-     * }} data
-     * @returns {void}
-     * @callback pick
-     * @param {number} pool
-     * @returns {Questions}
      */
     /**
      * @constructor
      * @param {Game} game
      * @param {configure} configure
-     * @param {pick} pick
-     * @param {settlement} settlement
+     * @param {Questions} questions
+     * @param {function} settlement
      * @returns {Room}
      */
-    constructor(game, {limit, pool}, pick, settlement) {
+    constructor(game, limit, questions, settlement) {
         this.#game = game;
         this.#limit = limit;
-        this.#questions = pick(pool);
+        this.#questions = questions;
         this.#settlement = settlement;
         // join leave batch
         this.#jlBatch = batch(

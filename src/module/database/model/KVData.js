@@ -29,8 +29,8 @@ export default class KVData extends Base {
      * @param {any} value
      */
     async set(key, value) {
-        const { matchedCount, modifiedCount, upsertedCount }
+        const { acknowledged }
             = await this.$update({key}, {value}, {upsert: true});
-        return matchedCount + modifiedCount + upsertedCount > 0;
+        return acknowledged;
     }
 }

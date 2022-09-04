@@ -12,7 +12,7 @@ export default class Score extends Base {
 
     /**
      * @param {string} uid
-     * @return {model}
+     * @return {Promise<model>}
      */
     async #findOrCreate(uid) {
         const model = await this.$find({uid});

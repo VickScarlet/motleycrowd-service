@@ -252,4 +252,8 @@ export default class User extends IModule {
     isGuest(uid) {
         return uid[0] == '#';
     }
+
+    async addMoney(uid, money) {
+        return this.$db.user.addMoney(uid, money);
+    }
 }

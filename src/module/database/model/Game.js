@@ -44,11 +44,15 @@ export default class Game extends Base {
      * @param {scores} scores
      */
     async save(type, questions, users, scores) {
-        const {id, created} = await this.$create({
+        const data = await this.$create({
             id: gid(), type, questions,
             users, scores,
         });
-        return {id, created};
+        if(!data) return null;
+        return {
+            id: data.id,
+            created: data.created
+        };
     }
 
     /**

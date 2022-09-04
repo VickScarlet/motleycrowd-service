@@ -87,16 +87,16 @@ export default class Rank extends IModule {
     }
 
     /**
-     * @param {10|100} type
      * @param {uid} uid
+     * @param {10|100} type
      * @param {ranking} ranking
      * @returns {Promise<boolean>}
      */
-    async addScore(type, uid, ranking) {
-        switch(''+type) {
-            case '10':
+    async addScore(uid, type, ranking) {
+        switch(type) {
+            case 10:
                 return this.$db.score.addScore10(uid, ranking);
-            case '100':
+            case 100:
                 return this.$db.score.addScore100(uid, ranking);
             default: return false;
         }

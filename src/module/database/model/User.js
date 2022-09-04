@@ -1,5 +1,6 @@
 import Base from '../base.js';
 import crypto from 'crypto';
+import { clone } from '../../../functions/index.js';
 
 /**
  * @typedef {Object} userdata
@@ -32,14 +33,11 @@ export default class User extends Base {
     };
 
     /**
-     * @typedef {import('mongoose').Document} model
-     */
-    /**
      * @private
      * @type {{
-     *      uid: Map<string, model>,
-     *      username: Map<string, model>,
-     *      email: Map<string, model>,
+     *      uid: Map<string, userdata>,
+     *      username: Map<string, string>,
+     *      email: Map<string, string>,
      * }}
      */
     #cache = {
@@ -52,25 +50,14 @@ export default class User extends Base {
      * 缓存用户
      * @private
      * @param {model} model
-     */
-    #j(model) {
-        if(!model) return null;
-        const {_id, __v, ...obj} = model.toJSON();
-        return obj;
-    }
-
-    /**
-     * 缓存用户
-     * @private
-     * @param {model} model
      * @return {void}
      */
-    #cacheIt(model) {
-        if (!model) return;
-        const {uid, username, email} = model;
-        this.#cache.uid.set(uid, model);
-        this.#cache.username.set(username, model);
-        this.#cache.email.set(email, model);
+    #cacheIt(data) {
+        if (!data) return;
+        const {uid, username, email} = data;
+        this.#cache.uid.set(uid, data);
+        this.#cache.username.set(username, uid);
+        this.#cache.email.set(email, uid);
     }
 
     /**
@@ -79,11 +66,17 @@ export default class User extends Base {
      * @param {string} uid
      * @return {Primise<boolean>}
      */
-    async cache(uid) {
-        if (this.#cache.uid.has(uid)) return true;
-        const model = await this.$find({uid});
-        if(!model) return false;
-        this.#cacheIt(model);
+    async cache(uid, fresh = false) {
+        if (this.#cache.uid.has(uid)) {
+            if(!fresh) return true;
+        } else if(fresh) {
+            return false;
+        }
+        const data = await this.$find(
+            {uid}, {__v: 0, _id: 0}
+        ).lean();
+        if(!data) return false;
+        this.#cacheIt(data);
         return true;
     }
 
@@ -93,12 +86,50 @@ export default class User extends Base {
      * @return {void}
      */
     release(uid) {
-        const model = this.#cache.uid.get(uid);
-        if (!model) return;
-        const {username, email} = model;
+        const data = this.#cache.uid.get(uid);
+        if (!data) return;
+        const {username, email} = data;
         this.#cache.uid.delete(uid);
         this.#cache.username.delete(username);
         this.#cache.email.delete(email);
+    }
+
+    /**
+     * @private
+     * @async
+     * @param {string} type
+     * @param {string} value
+     * @return {Promise<userdata>}
+     */
+     async #findWithCache(type, value, isClone=false) {
+        let uid;
+        switch(type) {
+            case 'username':
+            case 'email':
+                uid = this.#cache[type].get(value);
+                break;
+            case 'uid':
+                uid = value;
+                break;
+            default: return null;
+        }
+        const data = this.#cache.uid.get(uid);
+        if(data) return isClone ?clone(data) :data;
+        return this.$find(
+            {[type]: value},
+            {__v: 0, _id: 0}
+        ).lean();
+    }
+
+    /**
+     * @param {string} uid
+     * @param {Object<string, any>} update
+     * @return {Promise<boolean>}
+     */
+    async #update(uid, update) {
+        const {acknowledged} = await this.$update({uid}, update);
+        if(acknowledged) await this.cache(uid, true);
+        return acknowledged;
     }
 
     /**
@@ -109,13 +140,18 @@ export default class User extends Base {
      */
     async authenticate(username, password) {
         password = this.#encrypt(password);
-        let model = this.#cache.username.get(username);
-        if(model) return model.password === password
-                ?this.#j(model) :null;
-        model = await this.$find({username, password});
-        if(!model) return null;
-        this.#cacheIt(model);
-        return this.#j(model);
+        let uid = this.#cache.username.get(username);
+        if(uid) {
+            const local = this.#cache.uid.get(uid);
+            return local.password === password
+                ?clone(local) :null;
+        }
+        const data = await this.$find(
+            {username, password}
+        ).lean();
+        if(!data) return null;
+        this.#cacheIt(data);
+        return clone(data);
     }
 
     /**
@@ -130,6 +166,7 @@ export default class User extends Base {
             uid, username, email: uid,
             password: this.#encrypt(password),
         });
+        if(!model) return false;
         this.#cacheIt(model);
         return true;
     }
@@ -141,15 +178,9 @@ export default class User extends Base {
      * @param {string} password
      */
     async changePassword(uid, password) {
-        password = this.#encrypt(password);
-        const model = this.#cache.uid.get(uid);
-        if(!model) {
-            const result = await this.$update({uid}, {password});
-            return result.matchedCount > 0;
-        }
-        model.password = password;
-        await model.save();
-        return true;
+        return this.#update(uid, {
+            password: this.#encrypt(password)
+        });
     }
 
     /**
@@ -159,18 +190,7 @@ export default class User extends Base {
      * @param {string} username
      */
     async changeUsername(uid, username) {
-        const hasUser = await this.#findWithCache('username', username);
-        if(hasUser) return false;
-        const model = this.#cache.uid.get(uid);
-        if(!model) {
-            await this.$update({uid}, {username});
-            return true;
-        }
-        this.#cache.username.delete(model.username);
-        this.#cache.username.set(username, model);
-        model.username = username;
-        await model.save();
-        return true;
+        return this.#update(uid, {username});
     }
 
     /**
@@ -180,48 +200,7 @@ export default class User extends Base {
      * @param {string} email
      */
     async changeEmail(uid, email) {
-        const hasUser = await this.#findWithCache('email', email);
-        if(hasUser) return false;
-        const model = this.#cache.uid.get(uid);
-        if(!model) {
-            await this.$update({uid}, {email});
-            return true;
-        }
-        this.#cache.email.delete(model.email);
-        this.#cache.email.set(email, model);
-        model.email = email;
-        await model.save();
-        return true;
-    }
-
-    /**
-     * @private
-     * @async
-     * @param {string} type
-     * @param {string} value
-     */
-    async #findWithCache(type, value) {
-        switch(type) {
-            case 'uid':
-            case 'username':
-            case 'email': break;
-            default: return null;
-        }
-        if(this.#cache[type].has(value))
-            return this.#cache[type].get(value);
-        return this.$find({[type]: value});
-    }
-
-    /**
-     * @private
-     * @async
-     * @param {string} type
-     * @param {string} value
-     * @returns {Promise<userdata|null>}
-     */
-    async #findObjectWithCache(type, value) {
-        const model = await this.#findWithCache(type, value);
-        return this.#j(model);
+        return this.#update(uid, {email});
     }
 
     /**
@@ -230,7 +209,7 @@ export default class User extends Base {
      * @param {string} uid
      */
     async find(uid) {
-        return this.#findObjectWithCache('uid', uid);
+        return this.#findWithCache('uid', uid, true);
     }
 
     /**
@@ -239,7 +218,7 @@ export default class User extends Base {
      * @param {string} username
      */
     async findByUsername(username) {
-        return this.#findObjectWithCache('username', username);
+        return this.#findWithCache('username', username, true);
     }
 
     /**
@@ -248,7 +227,7 @@ export default class User extends Base {
      * @param {string} email
      */
     async findByEmail(email) {
-        return this.#findObjectWithCache('email', email);
+        return this.#findWithCache('email', email, true);
     }
 
     /**
@@ -256,7 +235,7 @@ export default class User extends Base {
      * @private
      * @param {password} password
      */
-     #encrypt(password) {
+    #encrypt(password) {
         const sha256 = crypto.createHash('sha256').update(password).digest('hex');
         const md5 = crypto.createHash('md5').update(password).digest('hex');
         return crypto.createHash('sha256').update(sha256 + md5).digest('hex');
@@ -272,8 +251,8 @@ export default class User extends Base {
         const notInCache = [];
         const result = [];
         for (const uid of uids) {
-            const model = this.#cache.uid.get(uid);
-            if(model) result.push(this.#j(model));
+            const data = this.#cache.uid.get(uid);
+            if(data) result.push(clone(data));
             else notInCache.push(uid);
         }
         if(notInCache.length < 1) return result;
@@ -282,5 +261,58 @@ export default class User extends Base {
             { _id: 0, __v: 0 },
         ).lean();
         return [...result, ...models];
+    }
+
+    #moneyInc(alter, r=1) {
+        const $inc = {};
+        for(const m in alter)
+            $inc[`props.money.${m}`] = alter[m] * r;
+        return $inc;
+    }
+
+    async addMoney(uid, money) {
+        return this.#update(uid, {
+            $inc: this.#moneyInc(money)
+        });
+    }
+
+    async subMoney(uid, money) {
+        return this.#update(uid, {
+            $inc: this.#moneyInc(money, -1)
+        });
+    }
+
+    async reward(uid, money) {
+        return this.addMoney(uid, money);
+    }
+
+    async consume(uid, money) {
+        const check = {uid};
+        for(const m in money)
+            check[`props.money.${m}`] = {
+                $gte: money[m]
+            };
+
+        const {acknowledged} = await this.$update(check, {
+            $inc: this.#moneyInc(money, -1)
+        });
+        if(acknowledged) await this.cache(uid, true);
+        return acknowledged;
+    }
+
+    async setMeta(uid, metas) {
+        const update = {};
+        for(const m in metas) {
+            const key = `meta.${m}`;
+            const value = metas[m];
+            if(value==null) {
+                if(!update.$unset) update.$unset = {};
+                update.$unset[key] = 1;
+            } else {
+                update[key] = value;
+            }
+        }
+
+        return this.#update(uid, update);
     }
 }
