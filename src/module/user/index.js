@@ -1,11 +1,11 @@
 /**
  * @typedef {string} uid
- * @typedef {import('./session').sid} sid
- * @typedef {import('.').CommandResult} CommandResult
+ * @typedef {import('../session').sid} sid
+ * @typedef {import('..').CommandResult} CommandResult
  * @typedef {{timeout: number}} configure
  */
-import IModule from "./imodule.js";
-import { batch } from '../functions/index.js';
+import IModule from "../imodule.js";
+import { batch } from '../../functions/index.js';
 
 /** 用户模块 */
 export default class User extends IModule {
