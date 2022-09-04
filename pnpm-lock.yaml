@@ -1,6 +1,7 @@
 lockfileVersion: 5.4
 
 specifiers:
+  cron: ^2.1.0
   log4js: ^6.6.0
   mocha: ^10.0.0
   mongodb: ^4.8.1
@@ -10,6 +11,7 @@ specifiers:
   ws: ^8.6.0
 
 dependencies:
+  cron: 2.1.0
   log4js: 6.6.0
   mongoose: 6.5.0
   uuid: 8.3.2
@@ -203,6 +205,12 @@ packages:
     engines: {node: '>=0.8'}
     hasBin: true
     dev: true
+
+  /cron/2.1.0:
+    resolution: {integrity: sha512-Hq7u3P8y7UWYvsZbSKHHJDVG0VO9O7tp2qljxzTScelcTODBfCme8AIhnZsFwmQ9NchZ3hr2uNr+s3DSms7q6w==}
+    dependencies:
+      luxon: 1.28.0
+    dev: false
 
   /date-format/4.0.11:
     resolution: {integrity: sha512-VS20KRyorrbMCQmpdl2hg5KaOUsda1RbnsJg461FfrcyCUg+pkd0b40BSW4niQyTheww4DBXQnS7HwSrKkipLw==}
@@ -455,6 +463,10 @@ packages:
       streamroller: 3.1.1
     transitivePeerDependencies:
       - supports-color
+    dev: false
+
+  /luxon/1.28.0:
+    resolution: {integrity: sha512-TfTiyvZhwBYM/7QdAVDh+7dBTBA29v4ik0Ce9zda3Mnf8on1S5KJI8P2jKFZ8+5C0jhmr0KwJEO/Wdpm0VeWJQ==}
     dev: false
 
   /memory-pager/1.5.0:

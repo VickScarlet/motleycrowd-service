@@ -44,6 +44,8 @@ export default class IModule {
     get $session() { return this.#$core.session; }
     /** @readonly */
     get $question() { return this.#$core.question; }
+    /** @readonly */
+    get $rank() { return this.#$core.rank; }
 
     /**
      * 初始化

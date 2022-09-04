@@ -47,6 +47,9 @@ const core = new Core({
     },
     logger: {
         disable: true,
+    },
+    rank: {
+        cron: '0 0 */1 * * *',
     }
 });
 await core.initialize();

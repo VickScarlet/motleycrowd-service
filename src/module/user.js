@@ -34,7 +34,7 @@ export default class User extends IModule {
                 this.#authenticate(sid, ''+username, ''+password),
             guest: sid => this.#guest(sid),
             logout: sid => this.#logout(sid),
-            get: (_, {uids}) => this.#get(uids),
+            get: (_, uids) => this.#get(uids),
         }, true];
     }
 

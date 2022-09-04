@@ -242,13 +242,24 @@ export default class Game extends IModule {
         this.#clear(room);
         const settlement = questions.settlement(users);
         const meta = questions.meta;
-        const model = await this.$db.game.save(
-            type, meta, [...users], settlement
-        );
+        const notGuest = [...users].filter(uid=>!this.$user.isGuest(uid));
+        let id, created;
+        if(notGuest.length > 0) {
+            const result = await this.$db.game.save(
+                type, meta, [...users], settlement
+            );
+            id = result.id;
+            created = result.created;
+            await Promise.allSettled(
+                notGuest.map(uid=>{
+                    const [,,ranking] = settlement[uid];
+                    return this.$rank.addScore(type, uid, ranking);
+                })
+            );
+        }
         users.forEach(uid=>{
             this.$core.send(uid, 'game.settlement', {
-                id: model.id,
-                created: model.created,
+                id, created,
                 questions: meta,
                 scores: settlement,
             });

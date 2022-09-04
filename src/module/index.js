@@ -25,6 +25,7 @@ import Database from './database/index.js';
 import Question from './question/index.js';
 import User from './user.js';
 import Game from './game/index.js';
+import Rank from './rank.js';
 import Session from './session.js';
 import process from 'process';
 
@@ -37,15 +38,17 @@ export default class Core {
      * @param {import('./question').configure} conf.question
      * @param {import('./user').configure} conf.user
      * @param {import('./game').configure} conf.game
+     * @param {import('./rank').configure} conf.rank
      * @param {import('./session').configure} conf.session
      * @returns {Core}
      */
-    constructor({database, question, user, game, session}) {
+    constructor({database, question, user, game, rank, session}) {
 
         this.#database = new Database(this, database);
         this.#question = new Question(this, question);
         this.#user = new User(this, user);
         this.#game = new Game(this, game);
+        this.#rank = new Rank(this, rank);
         this.#session = new Session(this, session);
 
         process.title = 'Metley Crowd Service';
@@ -74,6 +77,8 @@ export default class Core {
     #user;
     /** @private 游戏 @type {Game} */
     #game;
+    /** @private 排行榜 @type {Rank} */
+    #rank;
     /** @private 会话 @type {Session} */
     #session;
 
@@ -87,6 +92,8 @@ export default class Core {
     get user() { return this.#user; }
     /** @readonly 游戏 */
     get game() { return this.#game; }
+    /** @readonly 排行榜 */
+    get rank() { return this.#rank; }
     /** @readonly 会话 */
     get session() { return this.#session; }
 
@@ -154,9 +161,11 @@ export default class Core {
         await this.#question.initialize();
         await this.#user.initialize();
         await this.#game.initialize();
+        await this.#rank.initialize();
         await this.#session.initialize();
         this.#setProxy('user', this.#user.proxy());
         this.#setProxy('game', this.#game.proxy());
+        this.#setProxy('rank', this.#rank.proxy());
         logger.info('[System]', 'initializeed in', Date.now() - start, 'ms.');
     }
 
