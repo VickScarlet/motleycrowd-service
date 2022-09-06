@@ -1,85 +1,36 @@
-/**
- * @typedef {{collection?: string}} configure
- */
-import mongoose from 'mongoose';
-
-/** 用户数据模型 */
 export default class Base {
-    /** @static @type {string} */
-    static Name;
-    /** @static @type {import('mongoose').SchemaDefinition} */
-    static Schema;
-    /** @static @type {import('mongoose').SchemaOptions} */
-    static SchemaOptions;
-    /** @static @type {import('mongoose').CompileModelOptions} */
-    static ModelOptions;
-    /**
-     * @constructor
-     * @param {configure} [configure={}]
-     */
-    constructor({collection}={}) {
-        const {
-            Name, Schema, SchemaOptions, ModelOptions
-        } = this.$;
-
-        const schema = new mongoose.Schema(
-            Schema, SchemaOptions
-        );
-
-        this.#model = mongoose.model(
-            Name, schema, collection, ModelOptions
-        );
-    }
-    /** @private */
-    #model;
-
-    /** @readonly @type {typeof Base} */
-    get $() { return this.constructor; }
-    /** @readonly */
-    get $model() { return this.#model; }
-
-    $find(query, projection, options) {
-        return this.#model.findOne(query, projection, options);
+    constructor(collection) {
+        return new Proxy(this, {
+            get: (target, prop) => {
+                if(prop in target) return target[prop];
+                if(prop in collection) {
+                    const v = collection[prop];
+                    if(v instanceof Function) return v.bind(collection);
+                    return v;
+                }
+            }
+        });
     }
 
-    $findOne(query, projection, options) {
-        return this.#model.findOne(query, projection, options);
-    }
+    $flat(obj, depth=Infinity, flatArray=false) {
+        const flat = (o, d)=> {
+            if( d <= 0
+                || typeof o !== 'object'
+                || Array.isArray(o) && !flatArray
+            ) return [o, false];
 
-    $findMany(query, projection, options) {
-        return this.#model.find(query, projection, options);
-    }
-
-    $create(data) {
-        const model = new this.#model(data);
-        return model.save().catch(_=>null);
-    }
-
-    $update(filter, update, options) {
-        return this.#model.updateOne(filter, update, options);
-    }
-
-    $updateOne(filter, update, options) {
-        return this.#model.updateOne(filter, update, options);
-    }
-
-    $updateMany(filter, update, options) {
-        return this.#model.updateMany(filter, update, options);
-    }
-
-    $delete(filter, update, options) {
-        return this.#model.deleteOne(filter, update, options);
-    }
-
-    $deleteOne(filter, options) {
-        return this.#model.deleteOne(filter, options);
-    }
-
-    $deleteMany(filter, options) {
-        return this.#model.deleteMany(filter, options);
-    }
-
-    $aggregate(pipeline, options) {
-        return this.#model.aggregate(pipeline, options);
+            const r = {};
+            for (const k in o) {
+                const [v, n] = flat(o[k], d-1);
+                if(!n) {
+                    r[k] = v;
+                    continue;
+                }
+                for(const s in v)
+                    r[`${k}.${s}`] = v[s];
+            }
+            return [r, true];
+        }
+        return flat(obj, depth+1)[0];
     }
 }

@@ -12,6 +12,9 @@ export function clone(value) {
             value.forEach(v=>set.add(clone(v)));
             return set;
         }
+        if(value instanceof Date) {
+            return new Date(value);
+        }
         const obj = {};
         for(const key in value) obj[key] = clone(value[key]);
         return obj;

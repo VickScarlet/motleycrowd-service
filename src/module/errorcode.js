@@ -13,10 +13,12 @@ const ErrorCode = {
 
     /** @readonly 没有认证 */
     NO_AUTH: 2000,
-    /** @readonly 没有用户 */
-    NO_USER: 2001,
-    /** @readonly 密码错误 */
-    PASSWORD_ERROR: 2002,
+    /** @readonly 认证失败 */
+    AUTH_FAILED: 2001,
+    /** @readonly 用户名错误 */
+    USERNAME_ERROR: 2002,
+    /** @readonly 认证限制 */
+    AUTH_LIMIT: 2003,
 
     /** @readonly 没有游戏类型 */
     NO_GAME_TYPE: 3000,

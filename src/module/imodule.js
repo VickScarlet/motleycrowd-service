@@ -47,7 +47,7 @@ export default class IModule {
     /** @readonly */
     get $rank() { return this.#$core.rank; }
     /** @readonly */
-    get $reward() { return this.#$core.reward; }
+    get $asset() { return this.#$core.asset; }
 
     /**
      * 初始化

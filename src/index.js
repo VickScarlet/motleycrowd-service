@@ -5,9 +5,11 @@ globalThis.logger = new Logger({});
 
 const core = new Core({
     database: {
-        host: '127.0.0.1',
-        port: 27017,
+        url: 'mongodb://127.0.0.1:27017',
         dbName: 'test-motleycrowd',
+        options: {
+            useNewUrlParser: true,
+        },
         model: {
             KVData: {
                 collection: 'kvdata',
@@ -20,6 +22,9 @@ const core = new Core({
             },
             Score: {
                 collection: 'score',
+            },
+            Asset: {
+                collection: 'asset',
             },
         }
     },

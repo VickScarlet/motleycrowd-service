@@ -1,25 +1,25 @@
 /**
- * @typedef {import('./base').configure} ModelConfigure
+ * @typedef {{collection: string}} ModelConfigure
  * @typedef {{
- *      host: string,
- *      port: number,
+ *      url: string,
  *      dbName: string,
- *      username?: string,
- *      password?: string,
+ *      options?: import('mongodb').MongoClientOptions,
  *      model: {
- *          KVData?: ModelConfigure,
- *          User?: ModelConfigure,
- *          Game?: ModelConfigure,
- *          Score?: ModelConfigure,
+ *          KVData: ModelConfigure,
+ *          User: ModelConfigure,
+ *          Game: ModelConfigure,
+ *          Score: ModelConfigure,
+ *          Asset: ModelConfigure,
  *      }
  * }} configure
  */
 import IModule from '../imodule.js';
-import mongoose from 'mongoose';
+import {MongoClient} from 'mongodb';
 import KVData from './model/KVData.js';
 import User from './model/User.js';
 import Game from './model/Game.js';
 import Score from './model/Score.js';
+import Asset from './model/Asset.js';
 
 /**
  * 数据库模块
@@ -34,6 +34,8 @@ export default class Database extends IModule {
     #game;
     /** @private @type {Score} */
     #score;
+    /** @private @type {Asset} */
+    #asset;
     /** @readonly */
     get kvdata() { return this.#kvdata; }
     /** @readonly */
@@ -42,23 +44,56 @@ export default class Database extends IModule {
     get game() { return this.#game; }
     /** @readonly */
     get score() { return this.#score; }
+    /** @readonly */
+    get asset() { return this.#asset; }
+
+    /**
+     * @private
+     * @type {MongoClient}
+     */
+    #client;
 
     /** @override */
     async initialize() {
         /** @type {configure} */
-        const {host, port, dbName, username, password, model: mc} = this.$configure;
-        await mongoose.connect(`mongodb://${host}:${port}`, {
-            useNewUrlParser: true,
-            dbName, username, password,
-        });
-        this.#kvdata = new KVData(mc.KVData);
-        this.#user = new User(mc.User);
-        this.#game = new Game(mc.Game);
-        this.#score = new Score(mc.Score);
+        const {url, options, dbName, model: mc} = this.$configure;
+        const client = new MongoClient(url, options);
+        this.#client = client;
+        await client.connect();
+        const db = client.db(dbName);
+        const collections = await db.listCollections().toArray();
+        const set = new Set(collections.map(({name}) => name));
+        const create = async (Model, {collection})=>{
+            let coll;
+            if(!set.has(collection)) {
+                const {options} = Model;
+                coll = await db.createCollection(collection, options);
+            } else {
+                coll = db.collection(collection);
+            }
+            await coll.createIndexes(Model.indexes);
+            return new Model(coll);
+        };
+
+        [
+           this.#kvdata,
+           this.#user,
+           this.#game,
+           this.#score,
+           this.#asset,
+        ] = await Promise.all([
+            create(KVData, mc.KVData),
+            create(User, mc.User),
+            create(Game, mc.Game),
+            create(Score, mc.Score),
+            create(Asset, mc.Asset),
+        ]);
     }
 
     /** @override */
     async shutdown() {
-        return mongoose.disconnect();
+        if(this.#client) {
+            await this.#client.close();
+        }
     }
 }

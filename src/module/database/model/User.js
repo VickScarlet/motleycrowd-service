@@ -9,28 +9,15 @@ import { clone } from '../../../functions/index.js';
  * @property {string} password
  * @property {string} email
  * @property {{}=} meta
- * @property {{}=} props
  * @property {Date} created
  */
 /** 用户数据模型 */
 export default class User extends Base {
-    static Name = 'User';
-    static Schema = {
-        uid: {type: String, required: true, unique: true, index: true},
-        username: {type: String, required: true, unique: true, index: true},
-        password: {type: String, required: true},
-        email: {type: String, unique: true, index: true},
-        meta: {type: Object, default: {}},
-        props: {type: Object, default: {}},
-        created: {type: Date, default: Date.now},
-        updated: {type: Date, default: Date.now},
-    };
-    static SchemaOptions = {
-        timestamps: {
-            createdAt: 'created',
-            updatedAt: 'updated',
-        }
-    };
+    static indexes = [
+        { key: {uid: 1}, unique: true },
+        { key: {username: 1}, unique: true },
+        { key: {email: 1}, unique: true },
+    ];
 
     /**
      * @private
@@ -72,9 +59,9 @@ export default class User extends Base {
         } else if(fresh) {
             return false;
         }
-        const data = await this.$find(
-            {uid}, {__v: 0, _id: 0}
-        ).lean();
+        const data = await this.findOne(
+            {uid}, {projection: {_id: 0}}
+        );
         if(!data) return false;
         this.#cacheIt(data);
         return true;
@@ -115,24 +102,28 @@ export default class User extends Base {
         }
         const data = this.#cache.uid.get(uid);
         if(data) return isClone ?clone(data) :data;
-        return this.$find(
-            {[type]: value},
-            {__v: 0, _id: 0}
-        ).lean();
+        return this.findOne(
+            { [type]: value },
+            { projection: { _id: 0 } }
+        );
     }
 
     /**
+     * 更新用户数据
      * @param {string} uid
      * @param {Object<string, any>} update
      * @return {Promise<boolean>}
      */
     async #update(uid, update) {
-        const {acknowledged} = await this.$update({uid}, update);
+        if(update.$set) update.$set.updated = new Date();
+        else update.$set = { updated: new Date() };
+        const {acknowledged} = await this.updateOne({uid}, update);
         if(acknowledged) await this.cache(uid, true);
         return acknowledged;
     }
 
     /**
+     * 认证
      * @async
      * @param {string} type
      * @param {string} value
@@ -146,9 +137,10 @@ export default class User extends Base {
             return local.password === password
                 ?clone(local) :null;
         }
-        const data = await this.$find(
-            {username, password}
-        ).lean();
+        const data = await this.findOne(
+            { username, password },
+            { projection: { _id: 0 } }
+        );
         if(!data) return null;
         this.#cacheIt(data);
         return clone(data);
@@ -162,12 +154,17 @@ export default class User extends Base {
      * @param {string} password
      */
     async create(uid, username, password) {
-        const model = await this.$create({
-            uid, username, email: uid,
+        const now = new Date();
+        const data = {
+            uid, username, email: uid, meta: {},
             password: this.#encrypt(password),
-        });
-        if(!model) return false;
-        this.#cacheIt(model);
+            created: now, updated: now,
+        };
+        const ret = await this.insertOne(data)
+            .then(({acknowledged})=>acknowledged)
+            .catch(()=>false);
+        if(!ret) return false;
+        this.#cacheIt(data);
         return true;
     }
 
@@ -178,9 +175,9 @@ export default class User extends Base {
      * @param {string} password
      */
     async changePassword(uid, password) {
-        return this.#update(uid, {
+        return this.#update(uid, {$set: {
             password: this.#encrypt(password)
-        });
+        }});
     }
 
     /**
@@ -190,7 +187,7 @@ export default class User extends Base {
      * @param {string} username
      */
     async changeUsername(uid, username) {
-        return this.#update(uid, {username});
+        return this.#update(uid, {$set: {username}});
     }
 
     /**
@@ -200,7 +197,7 @@ export default class User extends Base {
      * @param {string} email
      */
     async changeEmail(uid, email) {
-        return this.#update(uid, {email});
+        return this.#update(uid, {$set: {email}});
     }
 
     /**
@@ -208,7 +205,7 @@ export default class User extends Base {
      * @async
      * @param {string} uid
      */
-    async find(uid) {
+    async findByUid(uid) {
         return this.#findWithCache('uid', uid, true);
     }
 
@@ -256,63 +253,22 @@ export default class User extends Base {
             else notInCache.push(uid);
         }
         if(notInCache.length < 1) return result;
-        const models = await this.$findMany(
+        const models = await this.find(
             { uid: { "$in": notInCache } },
-            { _id: 0, __v: 0 },
-        ).lean();
+            { projection: { _id: 0 } },
+        );
         return [...result, ...models];
     }
 
-    #moneyInc(alter, r=1) {
-        const $inc = {};
-        for(const m in alter)
-            $inc[`props.money.${m}`] = alter[m] * r;
-        return $inc;
-    }
-
-    async addMoney(uid, money) {
+    /**
+     * 设置元数据
+     * @async
+     * @param {string} uid
+     * @param {Object<string, any>} meta
+     */
+    async setMeta(uid, meta) {
         return this.#update(uid, {
-            $inc: this.#moneyInc(money)
+            $set: this.$flat({meta},1)
         });
-    }
-
-    async subMoney(uid, money) {
-        return this.#update(uid, {
-            $inc: this.#moneyInc(money, -1)
-        });
-    }
-
-    async reward(uid, money) {
-        return this.addMoney(uid, money);
-    }
-
-    async consume(uid, money) {
-        const check = {uid};
-        for(const m in money)
-            check[`props.money.${m}`] = {
-                $gte: money[m]
-            };
-
-        const {acknowledged} = await this.$update(check, {
-            $inc: this.#moneyInc(money, -1)
-        });
-        if(acknowledged) await this.cache(uid, true);
-        return acknowledged;
-    }
-
-    async setMeta(uid, metas) {
-        const update = {};
-        for(const m in metas) {
-            const key = `meta.${m}`;
-            const value = metas[m];
-            if(value==null) {
-                if(!update.$unset) update.$unset = {};
-                update.$unset[key] = 1;
-            } else {
-                update[key] = value;
-            }
-        }
-
-        return this.#update(uid, update);
     }
 }

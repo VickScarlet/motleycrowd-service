@@ -95,7 +95,7 @@ export default class User extends IModule {
      */
     async #authenticate(sid, username, password) {
         // check username
-        if(!this.#checkUsername(username)) return [this.$err.NO_USER];
+        if(!this.#checkUsername(username)) return [this.$err.USERNAME_ERROR];
 
         // AUTH LIMIT
         if(this.#lock.has(sid) || this.#lock.has(username))
@@ -167,12 +167,12 @@ export default class User extends IModule {
             return [1];
 
         // register
-        const uid = (46656 + ++this.#registerCount).toString(36); // uid by register count
-        await this.$db.kvdata.set('register', this.#registerCount);
+        const uid = (46656 + this.#registerCount + 1).toString(36); // uid by register count
         const success = await this.$db.user.create(
             uid, username, password
         );
         if(!success) return [1];
+        await this.$db.kvdata.set('register', ++this.#registerCount);
         // record this session
         this.#authenticated.set(sid, uid);
         this.#users.set(uid, {sid});

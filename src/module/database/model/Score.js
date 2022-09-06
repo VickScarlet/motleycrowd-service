@@ -2,36 +2,35 @@ import Base from '../base.js';
 
 /** 比分数据模型 */
 export default class Score extends Base {
-    static Name = 'Score';
-    static Schema = {
-        uid: {type: String, required: true, unique: true, index: true},
-        scores: {type: Object, default: {}},
-        score: {type: Number, default: 0},
-        count: {type: Number, default: 0},
-    };
+    static indexes = [
+        { key: { uid: 1 }, unique: true },
+        { key: { score: 1 } },
+        { key: { count: 1 } },
+        { key: { 'scores.10.s': 1 } },
+        { key: { 'scores.10.c': 1 } },
+        { key: { 'scores.100.s': 1 } },
+        { key: { 'scores.100.c': 1 } },
+    ];
 
-    /**
-     * @param {string} uid
-     * @return {Promise<model>}
-     */
-    async #findOrCreate(uid) {
-        const model = await this.$find({uid});
-        if (model) return model;
-        return this.$create({uid, scores: {
-            10: {s: 0, a: 0, c: 0, r1: 0, r3: 0},
-            100:{s: 0, a: 0, c: 0, r1: 0, r10: 0, r30: 0},
-        }});
+    async #find(uid) {
+        const data = await this.findOne({uid});
+        if (data) return data;
+        return {
+            uid, score: 0, count: 0,
+            scores: {
+                10: {s: 0, a: 0, c: 0, r1: 0, r3: 0},
+                100:{s: 0, a: 0, c: 0, r1: 0, r10: 0, r30: 0},
+            }
+        };
     }
 
-    /**
-     * @typedef {import('mongoose').Document} model
-     */
-    /**
-     * @param {model} model
-     */
-    async #save(model) {
-        await model.save();
-        return true;
+    async #save(data) {
+        const ret = await this.replaceOne(
+            { uid: data.uid },
+            data,
+            { upsert: true },
+        );
+        return ret.acknowledged;
     }
 
     /**
@@ -52,13 +51,13 @@ export default class Score extends Base {
      * @param {number} r
      */
     async addScore10(uid, r) {
-        const m = await this.#findOrCreate(uid);
-        let {10: {s, a, c, r1, r3}, ...ss} = m.scores;
+        const m = await this.#find(uid);
+        let {10: {s, a, c, r1, r3}} = m.scores;
         a = (a*c + r) / ++c;
         if(r<=1) r1+=1;
         if(r<=3) r3+=1;
         s = (10-a)*c + 50*r1 + 5*r3;
-        m.scores = {10: {s, a, c, r1, r3}, ...ss};
+        m.scores[10] = {s, a, c, r1, r3};
         return this.#calcTotal(m);
     }
 
@@ -68,14 +67,14 @@ export default class Score extends Base {
      * @param {number} r
      */
     async addScore100(uid, r) {
-        const m = await this.#findOrCreate(uid);
-        let {100: {s, a, c, r1, r10, r30}, ...ss} = m.scores;
+        const m = await this.#find(uid);
+        let {100: {s, a, c, r1, r10, r30}} = m.scores;
         a = (a*c + r) / ++c;
         if(r<=1) r1+=1;
         if(r<=10) r10+=1;
         if(r<=30) r30+=1;
         s = (100-a)/10*c + 500*r1 + 50*r10 + 5*r30;
-        m.scores = {100: {s, a, c, r1, r10, r30}, ...ss};
+        m.scores[100] = {s, a, c, r1, r10, r30};
         return this.#calcTotal(m);
     }
 
@@ -85,15 +84,15 @@ export default class Score extends Base {
      * @returns {Promise<{uid: string, rank: number}[]>}
      */
     async #rank(c, s) {
-        return this.$aggregate([
+        return this.aggregate([
             { $match: { [c]: { $gte: 10 } } },
             { $project: { uid: 1, s: '$'+s } },
             { $setWindowFields: {
                 sortBy: { s: -1 },
                 output: { rank: { $rank: {} } }
             } },
-            { $project: { _id: 0, s: 0 } },
-        ]);
+            { $project: { s: 0 } },
+        ]).toArray();
     }
 
     /** 总榜 */

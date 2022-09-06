@@ -20,20 +20,9 @@ import { v4 as gid } from 'uuid';
 
 /** 对局数据模型 */
 export default class Game extends Base {
-    static Name = 'Game';
-    static Schema = {
-        id: {type: String, required: true, unique: true, index: true},
-        type: {type: Number, required: true},
-        questions: {type: Array, required: true},
-        users: [{type: String, required: true}],
-        scores: {type: Object, required: true},
-        created: { type: Date, default: Date.now },
-    };
-    static SchemaOptions = {
-        timestamps: {
-            createdAt: 'created',
-        }
-    };
+    static indexes = [
+        { key: { id: 1 }, unique: true },
+    ];
 
     /**
      * 存档
@@ -44,11 +33,12 @@ export default class Game extends Base {
      * @param {scores} scores
      */
     async save(type, questions, users, scores) {
-        const data = await this.$create({
-            id: gid(), type, questions,
-            users, scores,
-        });
-        if(!data) return null;
+        const data = {
+            id: gid(), created: new Date(),
+            type, questions, users, scores,
+        };
+        const ret = await this.insertOne(data);
+        if(!ret.acknowledged) return null;
         return {
             id: data.id,
             created: data.created
@@ -61,8 +51,11 @@ export default class Game extends Base {
      * @param {string} id
      * @return {gamedata|null}
      */
-    async find(id) {
-        return this.$find({id}, {__v: 0, _id: 0}).lean();
+    async get(id) {
+        return this.findOne(
+            { id },
+            { projection: {_id: 0} }
+        );
     }
 
     /**
@@ -72,11 +65,12 @@ export default class Game extends Base {
      * @return {{id: number,  created: Date}[]}
      */
     async userList(uid) {
-        return this.$findMany(
-            {users: uid},
-            {_id: 0, id: 1, created: {
-                $dateToString: "YYYY-MM-DD HH:mm:ss"
-            }}
-        ).lean();
+        return this.find(
+            { users: uid },
+            { projection: {
+                id: 1, created: 1,
+                [`scores.${uid}`]: 1
+            } }
+        ).toArray();
     }
 }

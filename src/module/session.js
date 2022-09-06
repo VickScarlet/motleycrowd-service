@@ -242,6 +242,8 @@ export default class Session extends IModule {
     async shutdown() {
         if(!this.#wss) return;
         return new Promise((resolve, reject) => {
+            this.#wss.removeAllListeners();
+            this.#sessions.forEach(session => session.close(3000, "shutdown"));
             this.#wss.close(err=>err? reject(err): resolve());
         });
     }

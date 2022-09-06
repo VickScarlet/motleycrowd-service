@@ -265,7 +265,7 @@ export default class Game extends IModule {
             await Promise.allSettled(
                 notGuest.map(async uid=>{
                     const [,,ranking] = settlement[uid];
-                    await this.$reward.reward(uid, reward.get(ranking));
+                    await this.$asset.reward(uid, reward.get(ranking));
                 })
             );
         }

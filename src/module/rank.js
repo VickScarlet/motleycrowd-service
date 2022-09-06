@@ -102,4 +102,7 @@ export default class Rank extends IModule {
         }
     }
 
+    async reward(uid, { ranking: [type, ranking] }) {
+        return this.addScore(uid, type, ranking);
+    }
 }
