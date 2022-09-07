@@ -37,7 +37,7 @@ export default class Game extends Base {
             id: gid(), created: new Date(),
             type, questions, users, scores,
         };
-        const ret = await this.insertOne(data);
+        const ret = await this.$.insertOne(data);
         if(!ret.acknowledged) return null;
         return {
             id: data.id,
@@ -52,7 +52,7 @@ export default class Game extends Base {
      * @return {gamedata|null}
      */
     async get(id) {
-        return this.findOne(
+        return this.$.findOne(
             { id },
             { projection: {_id: 0} }
         );
@@ -65,7 +65,7 @@ export default class Game extends Base {
      * @return {{id: number,  created: Date}[]}
      */
     async userList(uid) {
-        return this.find(
+        return this.$.find(
             { users: uid },
             { projection: {
                 id: 1, created: 1,

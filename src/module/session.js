@@ -152,6 +152,8 @@ export default class Session extends IModule {
                 data = [guid, data];
                 break;
         }
+        const sync = this.$core.sync(sid);
+        if(sync) data.push(sync);
         data.push(this.online);
         const packet = await this.#packet(data);
         await this.#send(session, packet);
@@ -177,7 +179,11 @@ export default class Session extends IModule {
     async send(sid, message) {
         const session = this.#sessions.get(sid);
         if(!session) return;
-        message = await this.#packet([this.#MESSAGE, message, this.online]);
+        const data = [this.#MESSAGE, message];
+        const sync = this.$core.sync(sid);
+        if(sync) data.push(sync);
+        data.push(this.online);
+        message = await this.#packet(data);
         await this.#send(session, message);
     }
 
@@ -206,7 +212,7 @@ export default class Session extends IModule {
      * @param {string|undefined} reason
      * @returns {Promise<void>}
      */
-    async close(sid, code, reason) {
+    close(sid, code, reason) {
         const session = this.#sessions.get(sid);
         if(!session) return;
         session.close(code||3000, reason||"");

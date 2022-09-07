@@ -13,7 +13,7 @@ export default class Score extends Base {
     ];
 
     async #find(uid) {
-        const data = await this.findOne({uid});
+        const data = await this.$.findOne({uid});
         if (data) return data;
         return {
             uid, score: 0, count: 0,
@@ -25,7 +25,7 @@ export default class Score extends Base {
     }
 
     async #save(data) {
-        const ret = await this.replaceOne(
+        const ret = await this.$.replaceOne(
             { uid: data.uid },
             data,
             { upsert: true },
@@ -84,7 +84,7 @@ export default class Score extends Base {
      * @returns {Promise<{uid: string, rank: number}[]>}
      */
     async #rank(c, s) {
-        return this.aggregate([
+        return this.$.aggregate([
             { $match: { [c]: { $gte: 10 } } },
             { $project: { uid: 1, s: '$'+s } },
             { $setWindowFields: {

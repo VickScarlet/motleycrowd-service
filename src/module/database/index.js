@@ -96,4 +96,30 @@ export default class Database extends IModule {
             await this.#client.close();
         }
     }
+
+    sync(uid) {
+        const sync = [
+            ['user', this.#user.sync(uid)],
+            ['asset', this.#asset.sync(uid)],
+        ].filter(([,s])=>!!s);
+        if(!sync.length) return null;
+        return Object.fromEntries(sync);
+    }
+
+    usync(uid) {
+        this.#user.usync(uid);
+        this.#asset.usync(uid);
+    }
+
+    async gsync(uid, sync) {
+        const update = type=>{
+            if(!sync || !sync[type])
+                return new Date(0);
+            return new Date(sync[type]);
+        }
+        return Promise.all([
+            this.#user.gsync(uid, update('user')),
+            this.#asset.gsync(uid, update('asset')),
+        ]);
+    }
 }

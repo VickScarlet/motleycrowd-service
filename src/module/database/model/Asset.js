@@ -6,14 +6,22 @@ export default class Asset extends Base {
     ];
 
     async changeAssets(uid, assets) {
-        const ret = await this.updateOne(
+        const ret = await this.$.findOneAndUpdate(
             { uid },
             {
                 $inc: this.$flat({assets}, 2),
                 $set: { updated: new Date() }
             },
-            { upsert: true }
+            {
+                upsert: true,
+                returnDocument: 'after',
+                projection: { _id: 0 }
+            }
         );
+        if(ret.value) {
+            this.$sync(uid, ret.value)
+            return true;
+        }
         return ret.acknowledged;
     }
 
@@ -29,10 +37,22 @@ export default class Asset extends Base {
             check[key] = { $gte: value };
             flated[key] = -value;
         }
-        const ret = await this.updateOne(check, {
-            $inc: flated, $set: { updated: new Date() }
-        });
-        return ret.matchedCount > 0;
+        const ret = await this.$.findOneAndUpdate(
+            check,
+            {
+                $inc: flated,
+                $set: { updated: new Date() }
+            },
+            {
+                returnDocument: 'after',
+                projection: { _id: 0 }
+            }
+        );
+        if(ret.value) {
+            this.$sync(uid, ret.value)
+            return true;
+        }
+        return false;
     }
 
     async check(uid, assets) {
@@ -43,7 +63,7 @@ export default class Asset extends Base {
                 $gte: flated[key]
             };
         }
-        const count = await this.countDocuments(check);
+        const count = await this.$.countDocuments(check);
         return count > 0;
     }
 }

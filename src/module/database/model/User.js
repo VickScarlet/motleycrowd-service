@@ -39,8 +39,10 @@ export default class User extends Base {
      * @param {model} model
      * @return {void}
      */
-    #cacheIt(data) {
+    #cacheIt(data, check = false) {
         if (!data) return;
+        if (check && !this.#cache.uid.has(data.uid))
+            return;
         const {uid, username, email} = data;
         this.#cache.uid.set(uid, data);
         this.#cache.username.set(username, uid);
@@ -53,14 +55,12 @@ export default class User extends Base {
      * @param {string} uid
      * @return {Primise<boolean>}
      */
-    async cache(uid, fresh = false) {
-        if (this.#cache.uid.has(uid)) {
-            if(!fresh) return true;
-        } else if(fresh) {
-            return false;
-        }
-        const data = await this.findOne(
-            {uid}, {projection: {_id: 0}}
+    async cache(uid) {
+        if(this.#cache.uid.has(data.uid))
+            return true;
+        const data = await this.$.findOne(
+            { uid },
+            { projection: { _id: 0, password: 0 } }
         );
         if(!data) return false;
         this.#cacheIt(data);
@@ -104,7 +104,7 @@ export default class User extends Base {
         if(data) return isClone ?clone(data) :data;
         return this.findOne(
             { [type]: value },
-            { projection: { _id: 0 } }
+            { projection: { _id: 0, password: 0 } }
         );
     }
 
@@ -117,9 +117,18 @@ export default class User extends Base {
     async #update(uid, update) {
         if(update.$set) update.$set.updated = new Date();
         else update.$set = { updated: new Date() };
-        const {acknowledged} = await this.updateOne({uid}, update);
-        if(acknowledged) await this.cache(uid, true);
-        return acknowledged;
+        const ret = await this.$.findOneAndUpdate(
+            { uid }, update, {
+                returnDocument: 'after',
+                projection: { _id: 0, password: 0 },
+            }
+        );
+        if(ret.value) {
+            this.#cacheIt(ret.value, true);
+            this.$sync(uid, ret.value);
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -131,19 +140,13 @@ export default class User extends Base {
      */
     async authenticate(username, password) {
         password = this.#encrypt(password);
-        let uid = this.#cache.username.get(username);
-        if(uid) {
-            const local = this.#cache.uid.get(uid);
-            return local.password === password
-                ?clone(local) :null;
-        }
-        const data = await this.findOne(
+        const data = await this.$.findOne(
             { username, password },
-            { projection: { _id: 0 } }
+            { projection: { _id: 0, password: 0 } }
         );
         if(!data) return null;
         this.#cacheIt(data);
-        return clone(data);
+        return data.uid;
     }
 
     /**
@@ -160,11 +163,13 @@ export default class User extends Base {
             password: this.#encrypt(password),
             created: now, updated: now,
         };
-        const ret = await this.insertOne(data)
+        const ret = await this.$.insertOne(data)
             .then(({acknowledged})=>acknowledged)
             .catch(()=>false);
         if(!ret) return false;
+        delete data.password;
         this.#cacheIt(data);
+        this.$sync(data);
         return true;
     }
 
@@ -205,7 +210,7 @@ export default class User extends Base {
      * @async
      * @param {string} uid
      */
-    async findByUid(uid) {
+    async find(uid) {
         return this.#findWithCache('uid', uid, true);
     }
 
@@ -255,7 +260,7 @@ export default class User extends Base {
         if(notInCache.length < 1) return result;
         const models = await this.find(
             { uid: { "$in": notInCache } },
-            { projection: { _id: 0 } },
+            { projection: { _id: 0, password: 0 } },
         );
         return [...result, ...models];
     }
@@ -270,5 +275,21 @@ export default class User extends Base {
         return this.#update(uid, {
             $set: this.$flat({meta},1)
         });
+    }
+
+    async gsync(uid, update) {
+        const cache = this.#cache.uid.get(uid);
+        if(cache) {
+            if(cache.updated > update) {
+                this.$sync(uid, cache);
+            }
+            return;
+        }
+        const data = await this.$.findOne(
+            { uid, updated: { $gt: update } },
+            { projection: { _id: 0, password: 0 } }
+        );
+        if(data)
+            this.$sync(uid, data);
     }
 }

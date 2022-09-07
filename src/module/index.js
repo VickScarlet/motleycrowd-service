@@ -98,7 +98,7 @@ export default class Core {
     get game() { return this.#game; }
     /** @readonly 排行榜 */
     get rank() { return this.#rank; }
-    /** @readonly 奖励 */
+    /** @readonly 资产 */
     get asset() { return this.#asset; }
     /** @readonly 会话 */
     get session() { return this.#session; }
@@ -213,6 +213,13 @@ export default class Core {
             mark = this.#user.uid(sid);
         }
         return proxy.get(cmd)(mark, data);
+    }
+
+    sync(sid) {
+        const uid = this.#user.uid(sid);
+        if(!uid || this.#user.isGuest(uid))
+            return null;
+        return this.#database.sync(uid);
     }
 
     /**

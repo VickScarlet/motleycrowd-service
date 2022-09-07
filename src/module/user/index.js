@@ -30,8 +30,8 @@ export default class User extends IModule {
         return [{
             register: (sid, {username, password}) =>
                 this.#register(sid, ''+username, ''+password),
-            authenticate: (sid, {username, password}) =>
-                this.#authenticate(sid, ''+username, ''+password),
+            authenticate: (sid, {username, password, sync}) =>
+                this.#authenticate(sid, ''+username, ''+password, sync),
             guest: sid => this.#guest(sid),
             logout: sid => this.#logout(sid),
             get: (_, uids) => this.#get(uids),
@@ -59,6 +59,7 @@ export default class User extends IModule {
                     if(!uid) return;
                     kickset.add(uid);
                     this.#users.delete(uid);
+                    this.$db.usync(uid);
                 });
                 if(kickset.size)
                     this.$emit('user.leave', kickset);
@@ -93,7 +94,7 @@ export default class User extends IModule {
      * @param {string} password
      * @returns {Promise<CommandResult>}
      */
-    async #authenticate(sid, username, password) {
+    async #authenticate(sid, username, password, sync) {
         // check username
         if(!this.#checkUsername(username)) return [this.$err.USERNAME_ERROR];
 
@@ -109,11 +110,10 @@ export default class User extends IModule {
         // AUTH LIMIT
 
         // db authenticate
-        const data = await this.$db.user.authenticate(
+        const uid = await this.$db.user.authenticate(
             username, password
         );
-        if(!data) return [this.$err.AUTH_FAILED];
-        const {uid, email, meta, props} = data;
+        if(!uid) return [this.$err.AUTH_FAILED];
         // last session
         if(this.#users.has(uid)) {
             const {sid: last} = this.#users.get(uid);
@@ -121,13 +121,17 @@ export default class User extends IModule {
             this.$session.close(last, 3001, 'AAuth');
             this.#authenticated.delete(last);
         }
+        if(sync) {
+            if(sync.uid === uid) sync = sync.sync;
+            else sync = null;
+        }
         // record this session
+        await this.$db.gsync(uid, sync);
         this.#users.set(uid, {sid});
         this.#authenticated.set(sid, uid);
         this.#lock.delete(username);
         this.$emit('user.authenticated', uid);
-        await this.$db.user.cache(uid);
-        return [0, {uid, email, meta, props}];
+        return [0, {uid}];
     }
 
     /**

@@ -1,54 +1,108 @@
 import IModule from "./imodule.js";
 
 export default class Asset extends IModule {
-    #group(rewards) {
+    #group(assets) {
         const group = new Group();
-        for(const type in rewards) {
-            const reward = rewards[type];
+        for(const type in assets) {
+            const asset = assets[type];
             switch(type) {
                 case "rank":
                     group.push('rank', {
-                        ranking: reward,
+                        ranking: asset,
                     });
                     break;
                 case "money":
                     group.push('asset', {
-                        money: reward
+                        money: asset
                     });
                     break;
                 default:
                     group.push('default', {
-                        [type]: reward
+                        [type]: asset
                     });
             }
         }
         return group;
     }
 
-    async #reward(uid, type, rewards) {
+    async #run(assets, run, isPipe=false) {
+        const group = this.#group(assets);
+        if(isPipe) {
+            for(const [type, task] of group.entries())
+                if(!await run(type, task.get()))
+                    return false;
+            return true;
+        }
+
+        const result = await Promise.all(
+            group.map((task, type)=>run(type, task.get()))
+        );
+        for(const r of result)
+            if(!r) return false;
+        return true;
+    }
+
+
+    async #reward(uid, type, assets) {
         switch(type) {
             case "asset":
                 return this.$db.asset
-                    .reward(uid, rewards);
+                    .reward(uid, assets);
             case "rank":
                 return this.$rank
-                    .reward(uid, rewards);
+                    .reward(uid, assets);
             default:
                 return false;
         }
     }
 
-    async reward(uid, rewards) {
-        const result = await Promise.all(
-            this.#group(rewards).map(
-                (task, type)=>this.#reward(
-                    uid, type, task.get()
-                )
-            )
+    async reward(uid, assets) {
+        return this.#run(
+            assets,
+            this.#reward.bind(this, uid),
         );
-        for(const r of result)
-            if(!r) return false;
-        return true;
+    }
+
+    async #check(uid, type, assets) {
+        switch(type) {
+            case "asset":
+                return this.$db.asset
+                    .check(uid, assets);
+            default:
+                return false;
+        }
+    }
+
+    async check(uid, assets) {
+        return this.#run(
+            assets,
+            this.#check.bind(this, uid),
+            true
+        );
+    }
+
+    async #consume(uid, type, assets) {
+        switch(type) {
+            case "asset":
+                return this.$db.asset
+                    .consume(uid, assets);
+            default:
+                return false;
+        }
+    }
+
+    async consume(uid, assets) {
+        return this.#run(
+            assets,
+            this.#consume.bind(this, uid),
+            true
+        );
+    }
+
+    async consumeWithCheck(uid, assets) {
+        if(!await this.check(uid, assets))
+            return false;
+        return this.consume(uid, assets);
     }
 }
 

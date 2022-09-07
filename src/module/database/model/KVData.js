@@ -12,7 +12,7 @@ export default class KVData extends Base {
      * @param {string} key
      */
     async get(key) {
-        const ret = await this.findOne(
+        const ret = await this.$.findOne(
             { key },
             { projection: { value: 1 } }
         );
@@ -26,7 +26,7 @@ export default class KVData extends Base {
      * @param {any} value
      */
     async set(key, value) {
-        const ret = await this.updateOne(
+        const ret = await this.$.updateOne(
             {key}, {$set: {value}}, {upsert: true}
         );
         return ret.acknowledged;
