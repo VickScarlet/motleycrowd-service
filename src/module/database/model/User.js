@@ -278,18 +278,18 @@ export default class User extends Base {
     }
 
     async gsync(uid, update) {
-        const cache = this.#cache.uid.get(uid);
-        if(cache) {
-            if(cache.updated > update) {
-                this.$sync(uid, cache);
-            }
-            return;
+        let data = this.#cache.uid.get(uid);
+        if(!data) {
+            data = await this.$.findOne(
+                { uid },
+                { projection: { _id: 0, password: 0 } }
+            );
         }
-        const data = await this.$.findOne(
-            { uid, updated: { $gt: update } },
-            { projection: { _id: 0, password: 0 } }
-        );
-        if(data)
-            this.$sync(uid, data);
+        if(!data) return;
+        if(data.updated>update) {
+            this.$sync(uid, [data], true);
+        } else {
+            this.$sync(uid, [null, data], true);
+        }
     }
 }

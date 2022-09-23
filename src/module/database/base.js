@@ -1,4 +1,4 @@
-import { clone } from '../../functions/index.js';
+import { clone, objDiff } from '../../functions/index.js';
 export default class Base {
     /** @type {import('mongodb').CreateCollectionOptions} */
     static options;
@@ -54,15 +54,26 @@ export default class Base {
     }
 
     #sync = new Map();
-    $sync(uid, data) {
-        this.#sync.set(uid, data);
+    $sync(uid, data, isSet=false) {
+        if(isSet) {
+            this.#sync.set(uid, data);
+            return;
+        }
+        const last = this.#sync.get(uid);
+        if(!last) {
+            this.#sync.set(uid, [data]);
+        } else {
+            last[0] = data;
+        }
     }
 
     sync(uid) {
         if(this.#sync.has(uid)) {
-            const data = this.#sync.get(uid);
-            this.#sync.delete(uid);
-            return clone(data);
+            const [data, last] = this.#sync.get(uid);
+            if(!data) return null;
+            const diff = objDiff(last, data);
+            this.#sync.set(uid, [null,data]);
+            return diff;
         }
         return null;
     }
@@ -73,10 +84,13 @@ export default class Base {
 
     async gsync(uid, update) {
         const data = await this.$.findOne(
-            { uid, updated: { $gt: update } },
-            { projection: { _id: 0 } }
+            {uid}, {projection: {_id: 0, password: 0}}
         );
-        if(data)
-            this.$sync(uid, data);
+        if(!data) return;
+        if(data.updated>update) {
+            this.$sync(uid, [data], true);
+        } else {
+            this.$sync(uid, [null, data], true);
+        }
     }
 }

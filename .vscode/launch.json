@@ -6,21 +6,21 @@
     "configurations": [
         {
             "type": "node",
-            "request": "attach",
-            "name": "attach process",
-            "skipFiles": [
-                "<node_internals>/**"
-            ],
-            "processId": "${command:PickProcess}",
-        },
-        {
-            "type": "node",
             "request": "launch",
             "name": "main process",
             "skipFiles": [
                 "<node_internals>/**"
             ],
             "program": "."
+        },
+        {
+            "type": "node",
+            "request": "attach",
+            "name": "attach process",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "processId": "${command:PickProcess}",
         },
         {
             "type": "node",

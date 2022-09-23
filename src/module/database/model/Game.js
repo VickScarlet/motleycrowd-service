@@ -22,6 +22,7 @@ import { v4 as gid } from 'uuid';
 export default class Game extends Base {
     static indexes = [
         { key: { id: 1 }, unique: true },
+        { key: { created: 1 } },
     ];
 
     /**
@@ -64,9 +65,11 @@ export default class Game extends Base {
      * @param {string} uid
      * @return {{id: number,  created: Date}[]}
      */
-    async userList(uid) {
+    async history(uid, update) {
         return this.$.find(
-            { users: uid },
+            { users: uid, created: {
+                $gt: update
+            } },
             { projection: {
                 id: 1, created: 1,
                 [`scores.${uid}`]: 1

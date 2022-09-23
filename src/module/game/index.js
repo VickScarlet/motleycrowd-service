@@ -49,6 +49,7 @@ export default class Game extends IModule {
             pair: (uid, {type}) => this.pair(uid, type),
             leave: uid => this.leave(uid),
             answer: (uid, [idx, answer]) => this.answer(uid, answer, idx),
+            history: (uid, {update}) => this.history(uid, update),
         }, false];
     }
 
@@ -309,5 +310,13 @@ export default class Game extends IModule {
     async listSend(uids, cmd, data) {
         if(uids instanceof Set) uids = [...uids];
         return this.$core.listSend(uids, `game.${cmd}`, data);
+    }
+
+    async history(uid, update) {
+        update = new Date(update);
+        if(!update.getTime())
+            update = new Date(0);
+        const result = await this.$db.game.history(uid, update);
+        return [0, result];
     }
 }
