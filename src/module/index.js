@@ -27,7 +27,7 @@ import User from './user/index.js';
 import Game from './game/index.js';
 import Rank from './rank.js';
 import Asset from './asset.js';
-import Session from './session.js';
+import Session from './session/index.js';
 import process from 'process';
 
 /** 核心模块 */
