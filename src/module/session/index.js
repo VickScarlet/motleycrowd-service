@@ -5,7 +5,7 @@
 import { WebSocket, WebSocketServer } from 'ws';
 import { v4 as uuidGenerator } from 'uuid';
 import { gzipSync } from 'zlib';
-import IModule from "./imodule.js";
+import IModule from "../imodule.js";
 
 /** 会话模块 */
 export default class Session extends IModule {
