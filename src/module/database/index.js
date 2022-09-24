@@ -20,6 +20,7 @@ import User from './model/User.js';
 import Game from './model/Game.js';
 import Score from './model/Score.js';
 import Asset from './model/Asset.js';
+import Record from './model/Record.js';
 
 /**
  * 数据库模块
@@ -36,6 +37,8 @@ export default class Database extends IModule {
     #score;
     /** @private @type {Asset} */
     #asset;
+    /** @private @type {Record} */
+    #record;
     /** @readonly */
     get kvdata() { return this.#kvdata; }
     /** @readonly */
@@ -46,6 +49,8 @@ export default class Database extends IModule {
     get score() { return this.#score; }
     /** @readonly */
     get asset() { return this.#asset; }
+    /** @readonly */
+    get record() { return this.#record; }
 
     /**
      * @private
@@ -53,10 +58,18 @@ export default class Database extends IModule {
      */
     #client;
 
+    #gsync;
+    get $i() {
+        return {
+            gsync: this.#gsync,
+        };
+    }
+
     /** @override */
     async initialize() {
         /** @type {configure} */
-        const {url, options, dbName, model: mc} = this.$configure;
+        const {url, options, dbName, model: mc, gsync} = this.$configure;
+        this.#gsync = gsync;
         const client = new MongoClient(url, options);
         this.#client = client;
         await client.connect();
@@ -81,12 +94,14 @@ export default class Database extends IModule {
            this.#game,
            this.#score,
            this.#asset,
+           this.#record,
         ] = await Promise.all([
             create(KVData, mc.KVData),
             create(User, mc.User),
             create(Game, mc.Game),
             create(Score, mc.Score),
             create(Asset, mc.Asset),
+            create(Record, mc.Record),
         ]);
     }
 
@@ -97,18 +112,33 @@ export default class Database extends IModule {
         }
     }
 
+    get(model) {
+        switch(model) {
+            case 'kvdata': return this.#kvdata;
+            case 'user': return this.#user;
+            case 'game': return this.#game;
+            case 'score': return this.#score;
+            case 'asset': return this.#asset;
+            case 'record': return this.#record;
+            default: return null;
+        }
+    }
+
     sync(uid) {
-        const sync = [
-            ['user', this.#user.sync(uid)],
-            ['asset', this.#asset.sync(uid)],
-        ].filter(([,s])=>!!s);
+        const sync = this.#gsync
+            .map(model => (
+                [model, this.get(model)?.sync(uid)]
+            ))
+            .filter(([,sync])=>!!sync);
         if(!sync.length) return null;
         return Object.fromEntries(sync);
     }
 
     usync(uid) {
-        this.#user.usync(uid);
-        this.#asset.usync(uid);
+        this.#gsync.forEach(
+            model=>this.get(model)
+                      ?.usync(uid)
+        );
     }
 
     async gsync(uid, sync) {
@@ -117,9 +147,9 @@ export default class Database extends IModule {
                 return new Date(0);
             return new Date(sync[type]);
         }
-        return Promise.all([
-            this.#user.gsync(uid, update('user')),
-            this.#asset.gsync(uid, update('asset')),
-        ]);
+        return Promise.all(this.#gsync.map(
+            model=>this.get(model)
+                      ?.gsync(uid, update(model))
+        ));
     }
 }

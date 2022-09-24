@@ -55,6 +55,8 @@ export function batch(bpart, time, apart) {
 }
 
 export function getType(value) {
+    const name = value?.constructor?.name;
+    if(name) return name;
     const type = Object.prototype.toString.call(value);
     return type.substring(8, type.length - 1);
 }
@@ -65,8 +67,15 @@ export function equals(a, b) {
     const tb = getType(b);
     if(ta!=tb) return false;
     switch(ta) {
+        case 'Number':
+            if(isNaN(a) && isNaN(b)) return true;
+            return a===b;
         case 'Array':
             if(a.length!=b.length) return false;
+            for (let i=a.length; i--;)
+                if(!equals(a[i], b[i]))
+                    return false;
+            return true;
         case 'Object':
             for(const key in a)
                 if(!equals(a[key], b[key]))
@@ -74,8 +83,18 @@ export function equals(a, b) {
             return true;
         case 'Set':
             if(a.size!=b.size) return false;
-            for(const v of a)
-                if(!b.has(v)) return false;
+            const bm = new Map(b.entries());
+            for(const v of a) {
+                if(b.has(v)) return true;
+                let found = false;
+                for(const [key, value] of bm)
+                    if(equals(v, value)) {
+                        bm.delete(key);
+                        found = true;
+                        break;
+                    }
+                if(!found) return false;
+            }
             return true;
         case 'Map':
             if(a.size!=b.size) return false;
@@ -86,6 +105,7 @@ export function equals(a, b) {
         case 'Date':
             return a.getTime() === b.getTime();
         default:
+            if(a.equals) return a.equals(b);
             return false;
     }
 }

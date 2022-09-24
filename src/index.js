@@ -10,6 +10,7 @@ const core = new Core({
         options: {
             useNewUrlParser: true,
         },
+        gsync: ['user', 'asset', 'record'],
         model: {
             KVData: {
                 collection: 'kvdata',
@@ -25,6 +26,9 @@ const core = new Core({
             },
             Asset: {
                 collection: 'asset',
+            },
+            Record: {
+                collection: 'record',
             },
         }
     },

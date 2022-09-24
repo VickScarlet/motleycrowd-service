@@ -20,6 +20,7 @@
  * @returns {void}
  *
  */
+import {clone} from '../functions/index.js';
 import ErrorCode from './errorcode.js';
 import Database from './database/index.js';
 import Question from './question/index.js';
@@ -248,11 +249,22 @@ export default class Core {
         return this.#session.listSend(sids, [command, await data]);
     }
 
+    #i;
     /** 基本信息 */
     baseinfo() {
-        return {
-            version: "0.0.1"
-        };
+        if(this.#i) return this.#i;
+        const info = { version: '0.0.1' };
+
+        info.session = this.#session.$i;
+        info.asset = this.#asset.$i;
+        info.rank = this.#rank.$i;
+        info.game = this.#game.$i;
+        info.user = this.#user.$i;
+        info.question = this.#question.$i;
+        info.database = this.#database.$i;
+
+        this.#i = clone(info);
+        return info;
     }
 
     /** @readonly 基本信息 */
