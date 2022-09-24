@@ -26,8 +26,8 @@ import Database from './database/index.js';
 import Question from './question/index.js';
 import User from './user/index.js';
 import Game from './game/index.js';
-import Rank from './rank.js';
-import Asset from './asset.js';
+import Rank from './rank/index.js';
+import Asset from './asset/index.js';
 import Session from './session/index.js';
 import process from 'process';
 

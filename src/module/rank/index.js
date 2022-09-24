@@ -7,7 +7,7 @@
  * @property {[uid, ranking][]} rank
  * @property {Map<uid, ranking>} user
  */
-import IModule from "./imodule.js";
+import IModule from "../imodule.js";
 import { CronJob } from "cron";
 
 /** 排行榜模块 */

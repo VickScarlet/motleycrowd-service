@@ -1,4 +1,4 @@
-import IModule from "./imodule.js";
+import IModule from "../imodule.js";
 
 export default class Asset extends IModule {
     #group(assets) {
