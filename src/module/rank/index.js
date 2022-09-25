@@ -13,10 +13,10 @@ import { CronJob } from "cron";
 /** 排行榜模块 */
 export default class Rank extends IModule {
     proxy() {
-        return [{
+        return {
             get: (_, ranks) => this.#get(ranks),
             ranking: (uid) => this.#ranking(uid),
-        }, true];
+        };
     }
 
     /** @private @type {CronJob} */

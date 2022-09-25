@@ -15,6 +15,9 @@ const core = new Core({
             KVData: {
                 collection: 'kvdata',
             },
+            Auth: {
+                collection: 'auth',
+            },
             User: {
                 collection: 'user',
             },
@@ -37,6 +40,8 @@ const core = new Core({
     session: {
         host: '127.0.0.1',
         port: 1919,
+        cron: '0 */1 * * * *',
+        hold: 1000 * 60 * 1,
     },
     user: {
         authLimit: 5000,

@@ -12,14 +12,14 @@ class Session {
         this.#callbacks.set(this.#BORDERCAST, boardcast);
         this.#callbacks.set(this.#MESSAGE, message);
     }
-
-    #CONNECT = 0;
-    #PING = 1;
-    #PONG = 2;
-    #MESSAGE = 3
-    #REPLY = 4;
+    #PING = 0;
+    #PONG = 1;
+    #MESSAGE = 2;
+    #BORDERCAST = 3;
+    #CONNECT = 4;
     #RESUME = 5;
-    #BORDERCAST = 9;
+    #AUTH = 8;
+    #LOGOUT = 9;
 
     #protocol;
     #host;
@@ -31,6 +31,7 @@ class Session {
     #lastping = 0;
     #onconnect;
     #sid;
+    #uid;
 
     get #needping() {
         return Date.now() - this.#lastping > 60000;
@@ -43,71 +44,60 @@ class Session {
     }
 
     get #url() {
-        if(this.#host) {
-            if(this.#port) return `${this.#protocol}://${this.#host}:${this.#port}`;
-            return `${this.#protocol}://${this.#host}`;
-        }
-        return `${this.#protocol}://${window.location.host}`;
+        if(this.#port) return `${this.#protocol}://${this.#host}:${this.#port}`;
+        return `${this.#protocol}://${this.#host}`;
     }
 
-    async #ws(onmessage, onclose) {
+    async #ws(first) {
         return new Promise((resolve, reject) => {
+            let message, close;
             const ws = new WebSocket(this.#url);
-            ws.addEventListener('open', _ => resolve(ws));
+            ws.addEventListener('open', _ => {
+                message = async data => {
+                    message = this.#onmessage.bind(this);
+                    close = ({code, reason}) => this.#onclose(code, reason);
+                    this.#client = ws;
+                    resolve({ws, data});
+                };
+                ws.send(JSON.stringify(first));
+            });
             ws.addEventListener('error', e => reject(e));
             ws.addEventListener('message', async ({data}) => {
                 try {
-                    onmessage(JSON.parse(data))
+                    data = JSON.parse(data);
                 } catch (e) {
-                    onmessage(JSON.parse(unzipSync(data).toString()));
+                    data = JSON.parse(unzipSync(data).toString());
                 }
+                this.#online = data.pop();
+                message(data);
             });
-            ws.addEventListener('close', onclose);
+            ws.addEventListener('close', e => close?.(e));
         });
     }
 
     async #connect() {
-        return new Promise(async resolve => {
-            const client = await this.#ws(
-                data => {
-                    if(data[0]!==this.#CONNECT)
-                        return this.#onmessage(data);
-                    const [, info, sid, online] = data;
-                    this.#client = client;
-                    this.#online = online;
-                    this.#sid = sid;
-                    this.#onconnect(info, online);
-                    resolve();
-                },
-                ({code, reason}) => this.#onclose(code, reason),
-            );
-            client.send(JSON.stringify([this.#CONNECT]));
-        });
+        return this.#ws([this.#CONNECT])
+            .then(({data: [, info, sid]}) => {
+                this.#sid = sid;
+                this.#onconnect(info);
+                return true;
+            });
     }
 
     async #resume() {
-        return new Promise(async (resolve, reject) => {
-            const client = await this.#ws(
-                data => {
-                    if(data[0]!==this.#RESUME)
-                        return this.#onmessage(data);
-                    const [, success, online] = data;
-                    this.#online = online;
-                    if(!success)
-                        return reject (new Error(`RESUME failed`));
-                    this.#client = client;
-                    resolve();
-                },
-                ({code, reason}) => this.#onclose(code, reason),
-            );
-            client.send(JSON.stringify([this.#RESUME, this.#sid]));
-        });
+        if(!this.#sid) return this.#connect();
+        return this.#ws([this.#RESUME, this.#sid, this.#uid])
+            .then(({data: [, success, sid]})=>{
+                this.#sid = sid;
+                return [true, success];
+            })
+            .catch(_=>([false]));
     }
 
-    async #onmessage([guid, content, attach]) {
+    async #onmessage([guid, content, sync]) {
         const callback = index=>{
             if(!this.#callbacks.has(index)) return;
-            this.#callbacks.get(index)(content, attach);
+            this.#callbacks.get(index)(null, content);
             this.#callbacks.delete(index);
         }
         switch(guid) {
@@ -119,72 +109,113 @@ class Session {
                 break;
             case this.#MESSAGE:
             case this.#BORDERCAST:
-                this.#callbacks.get(guid)(content, attach);
+                this.#callbacks.get(guid)(content);
                 break;
-            case this.#REPLY:
             default:
                 callback(guid);
                 break;
         }
     }
 
-    #onclose(code) {
+    #onclose(code, reason) {
         this.#client = null;
         switch(code) {
             case 3000:
             case 3001:
                 return;
         }
-        this.#resume();
+        const exclude = new Set([
+            this.#MESSAGE,
+            this.#BORDERCAST,
+        ]);
+        const error = new Error(`Network Error`);
+        this.#callbacks.forEach((callback, guid) => {
+            if(exclude.has(guid)) return;
+            this.#callbacks.delete(guid);
+            callback(error);
+        });
+        const circleResume = ()=>this.#resume()
+            .then(([success, isAuth])=>{
+                if(success) return;
+                circleResume();
+            });
+        circleResume();
     }
 
-    #send(data) {
-        this.#client.send(JSON.stringify(data));
-    }
-
-    close() {
-        this.#client.close();
-    }
-
-    #ping() {
+    async #send(id, ...others) {
+        if(!this.#client) throw new Error('Network Error');
+        switch(id) {
+            case this.#PONG:
+                this.#client.send(JSON.stringify([id, ...others]));
+                return true;
+            case this.#PING:
+                break;
+            default:
+                if(this.#callbacks.has(id)) {
+                    throw new Error('Duplicate id');
+                }
+        }
         return new Promise((resolve, reject) => {
-            if(!this.#client) return reject('not connected');
-            let called = false;
-            const start = Date.now();
-            const done = online=>{
-                if(called) return;
-                called = true;
-                const delay = Date.now() - start;
-                this.#online = online;
-                this.#delay = delay;
-                resolve({delay, online});
-            }
-            this.#callbacks.set(this.#PING, done);
-            this.#send([this.#PING]);
+            this.#callbacks.set(id, (err, result)=>{
+                if(err) return reject(err);
+                resolve(result);
+            });
+            this.#client.send(JSON.stringify([id, ...others]));
         });
     }
 
+    async #ping() {
+        console.debug('[Session|ping] ping...');
+        const start = Date.now();
+        await this.#send(this.#PING);
+        const delay = Date.now() - start;
+        this.#delay = delay;
+        const online = this.#online;
+        console.debug('[Session|ping] [delay:%dms] [online:%d]', delay, online);
+        return {delay, online};
+    }
+
+    #genMessageId() {
+        const guidF = uuidGenerator();
+        const L = guidF.length;
+        for(let i = 1; i<=L; i++) {
+            const guid = guidF.substring(0, i)
+            if(this.#callbacks.has(guid)) continue;
+            return guid;
+        }
+    }
+
+    /**
+     *
+     * @param {string} command
+     * @param {any} data
+     * @return {Promise<{
+     *      success: boolean,
+     *      code: number,
+     *      data?: any,
+     * }>}
+     */
     async command(command, data) {
-        return new Promise(resolve => {
-            const guidF = uuidGenerator();
-            const L = guidF.length;
-            for(let i = 1; i<=L; i++) {
-                const guid = guidF.substring(0, i)
-                if(this.#callbacks.has(guid)) continue;
-                this.#callbacks.set(guid, ([code, ret])=>{
-                    // hook error
-                    const success = code !== undefined && !code;
-                    if(code) {
-                        console.debug('Command error:', code);
-                    }
-                    resolve({ success, code, data: ret });
-                });
-                const message = [guid,command];
-                if(data!==undefined) message.push(data);
-                this.#send(message);
-                return;
+        console.debug('[Session|>>>>] [command:%s] data:', command, data);
+        return this.#command(this.#genMessageId(), command, data);
+    }
+
+    async #command(...args) {
+        try {
+            const [code, ret] = await this.#send(...args);
+            if(code) {
+                console.debug('Command error:', code);
+                $.emit('command.error', code);
             }
-        });
+            return {
+                success: code !== undefined && !code,
+                code, data: ret,
+            };
+        } catch (err) {
+            console.error(err);
+            $.emit('command.error', -1);
+            return { success: false, code: -1 };
+        }
     }
 
     async ping() {
@@ -194,6 +225,45 @@ class Session {
         }
         const {delay, online} = this;
         return {delay, online};
+    }
+
+    #AUTH_REGISTER = 0;
+    #AUTH_LOGIN = 1;
+    #AUTH_GUEST = 2;
+    async authenticate(username, password) {
+        const gsync = await this.$db.gsync(username);
+        return this.#command(
+            this.#AUTH,
+            this.#AUTH_LOGIN,
+            username,
+            password,
+            gsync,
+        ).then(({data})=>this.#uid=data||null);
+    }
+
+    async register(username, password) {
+        return this.#command(
+            this.#AUTH,
+            this.#AUTH_REGISTER,
+            username,
+            password,
+        ).then(({data})=>this.#uid=data||null);
+    }
+
+    async guest() {
+        return this.#command(
+            this.#AUTH,
+            this.#AUTH_GUEST,
+        ).then(({data})=>this.#uid=data||null);
+    }
+
+    async logout() {
+        return this.#command(
+            this.#LOGOUT
+        ).then(({success})=>{
+            this.#uid = null;
+            return success;
+        });
     }
 }
 
@@ -247,10 +317,10 @@ export default class MiniClient {
     }
 
     user = {
-        authenticate: (username, password) => this.command('user.authenticate', {username, password}),
-        register: (username, password) => this.command('user.register', {username, password}),
-        logout: () => this.command('user.logout'),
-        guest: () => this.command('user.guest'),
+        authenticate: (username, password) => this.#session.authenticate(username, password),
+        register: (username, password) => this.#session.register(username, password),
+        logout: () => this.#session.logout(),
+        guest: () => this.#session.guest(),
     }
 
     game = {

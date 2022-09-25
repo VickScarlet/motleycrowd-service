@@ -43,14 +43,14 @@ export default class Game extends IModule {
     }
 
     proxy() {
-        return [{
+        return {
             create: (uid, {type}) => this.create(uid, type),
             join: (uid, {room}) => this.join(uid, room),
             pair: (uid, {type}) => this.pair(uid, type),
             leave: uid => this.leave(uid),
             answer: (uid, [idx, answer]) => this.answer(uid, answer, idx),
             history: (uid, {update}) => this.history(uid, update),
-        }, false];
+        };
     }
 
     /**
@@ -68,7 +68,7 @@ export default class Game extends IModule {
         for (const [type] of types) {
             this.#pairPending.set(type, []);
         }
-        this.$on('user.leave', uid => this.leave(uid));
+        this.$on('user.logout', uid => this.leave(uid));
         this.$on('user.authenticated', uid => this.#resume(uid));
         this.$on('user.pending', uid => this.#pending(uid));
     }

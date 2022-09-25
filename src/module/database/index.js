@@ -16,6 +16,7 @@
 import IModule from '../imodule.js';
 import {MongoClient} from 'mongodb';
 import KVData from './model/KVData.js';
+import Auth from './model/Auth.js';
 import User from './model/User.js';
 import Game from './model/Game.js';
 import Score from './model/Score.js';
@@ -29,6 +30,8 @@ import Record from './model/Record.js';
 export default class Database extends IModule {
     /** @private @type {KVData} */
     #kvdata;
+    /** @private @type {Auth} */
+    #auth;
     /** @private @type {User} */
     #user;
     /** @private @type {Game} */
@@ -41,6 +44,8 @@ export default class Database extends IModule {
     #record;
     /** @readonly */
     get kvdata() { return this.#kvdata; }
+    /** @readonly */
+    get auth() { return this.#auth; }
     /** @readonly */
     get user() { return this.#user; }
     /** @readonly */
@@ -90,6 +95,7 @@ export default class Database extends IModule {
 
         [
            this.#kvdata,
+           this.#auth,
            this.#user,
            this.#game,
            this.#score,
@@ -97,6 +103,7 @@ export default class Database extends IModule {
            this.#record,
         ] = await Promise.all([
             create(KVData, mc.KVData),
+            create(Auth, mc.Auth),
             create(User, mc.User),
             create(Game, mc.Game),
             create(Score, mc.Score),
@@ -115,6 +122,7 @@ export default class Database extends IModule {
     get(model) {
         switch(model) {
             case 'kvdata': return this.#kvdata;
+            case 'auth': return this.#auth;
             case 'user': return this.#user;
             case 'game': return this.#game;
             case 'score': return this.#score;
@@ -125,16 +133,20 @@ export default class Database extends IModule {
     }
 
     sync(uid) {
-        const sync = this.#gsync
-            .map(model => (
-                [model, this.get(model)?.sync(uid)]
-            ))
-            .filter(([,sync])=>!!sync);
+        if(!uid || this.$user.isGuest(uid))
+            return null;
+        const sync = [];
+        this.#gsync.forEach(model=>{
+            const s = this.get(model)?.sync(uid);
+            if(s) sync.push(model, s);
+        });
         if(!sync.length) return null;
-        return Object.fromEntries(sync);
+        return [uid, sync];
     }
 
     usync(uid) {
+        if(!uid || this.$user.isGuest(uid))
+            return null;
         this.#gsync.forEach(
             model=>this.get(model)
                       ?.usync(uid)

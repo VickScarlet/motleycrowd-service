@@ -1,8 +1,7 @@
 /**
- * @typedef {import('./session').sid} sid
  * @typedef {import('./user').uid} uid
  * @typedef {[code: number, data: any]} CommandResult
- * @typedef {(mark: sid|uid, data=)=>Promise<CommandResult>|CommandResult} CommandProxy
+ * @typedef {(uid:uid, data=)=>Promise<CommandResult>|CommandResult} CommandProxy
  * @typedef {Map<string, CommandProxy>} ProxyMap
  * @typedef {(data: any)=>void} EventCallback
  * @typedef {Set<EventCallback>} EventSet
@@ -70,8 +69,6 @@ export default class Core {
     #events = new Map();
     /** @private @type {Map<string, ProxyMap>}*/
     #proxy = new Map();
-    /** @private @type {Set<string>} */
-    #proxyR = new Set();
     /** @private 数据库 @type {Database} */
     #database;
     /** @private 题目 @type {Question} */
@@ -139,21 +136,16 @@ export default class Core {
      * 设置代理
      * @private
      * @param {string} module
-     * @param {[
-     *      proxy: Object<string, CommandProxy>,
-     *      requestSid?: boolean,
-     * ]=} data
+     * @param {{[proxy: string]: CommandProxy}} proxy
      * @returns {void}
      */
-    #setProxy(module, data) {
-        if(!data) return;
-        const [proxy, requestSid] = data;
+    #setProxy(module, proxy) {
+        if(!proxy) return;
         /** @type {ProxyMap} */
         const map = new Map();
         for(const name in proxy)
             map.set(name, proxy[name]);
         this.#proxy.set(module, map);
-        if(requestSid) this.#proxyR.add(module);
     }
 
     /**
@@ -198,29 +190,17 @@ export default class Core {
     /**
      * 用户执行命令
      * @async
-     * @param {sid} sid
+     * @param {uid} uid
      * @param {{command: string, data: any}} parameters
      * @returns {Promise<CommandResult>}
      */
-    async useraction(sid, {command, data}) {
+    async useraction(uid, {command, data}) {
         if(!command) return [this.$err.NO_CMD];
         const [p, cmd] = command.split(".");
         const proxy = this.#proxy.get(p);
         if(!proxy || !proxy.has(cmd))
             return [this.$err.NO_CMD];
-        let mark = sid;
-        if(!this.#proxyR.has(p)) {
-            if(!this.#user.isAuthenticated(sid)) return [this.$err.NO_AUTH];
-            mark = this.#user.uid(sid);
-        }
-        return proxy.get(cmd)(mark, data);
-    }
-
-    sync(sid) {
-        const uid = this.#user.uid(sid);
-        if(!uid || this.#user.isGuest(uid))
-            return null;
-        return this.#database.sync(uid);
+        return proxy.get(cmd)(uid, data);
     }
 
     /**
@@ -231,9 +211,7 @@ export default class Core {
      * @param {any} data
      */
     async send(uid, command, data) {
-        const sid = this.#user.sid(uid);
-        if(!sid) return false;
-        return this.#session.send(sid, [command, await data]);
+        return this.#session.send(uid, [command, await data]);
     }
 
     /**
@@ -244,9 +222,7 @@ export default class Core {
      * @param {any} data
      */
     async listSend(uids, command, data) {
-        const sids = uids.map(uid => this.#user.sid(uid)).filter(sid=>!!sid);
-        if(sids.length < 1) return false;
-        return this.#session.listSend(sids, [command, await data]);
+        return this.#session.listSend(uids, [command, await data]);
     }
 
     #i;

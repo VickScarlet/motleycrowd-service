@@ -18,11 +18,9 @@ export default class Asset extends Base {
                 projection: { _id: 0 }
             }
         );
-        if(ret.value) {
-            this.$sync(uid, ret.value)
-            return true;
-        }
-        return ret.acknowledged;
+        if(!ret.ok) return false;
+        this.$sync(uid, ret.value)
+        return true;
     }
 
     async reward(uid, assets) {
@@ -48,11 +46,9 @@ export default class Asset extends Base {
                 projection: { _id: 0 }
             }
         );
-        if(ret.value) {
-            this.$sync(uid, ret.value)
-            return true;
-        }
-        return false;
+        if(!ret.ok) return false;
+        this.$sync(uid, ret.value)
+        return true;
     }
 
     async check(uid, assets) {

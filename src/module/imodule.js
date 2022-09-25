@@ -71,10 +71,7 @@ export default class IModule {
 
     /**
      * @typedef {import('.').CommandProxy} CommandProxy
-     * @returns {[
-     *      proxy: Object<string, CommandProxy>,
-     *      requestSid?: boolean,
-     * ] | null}
+     * @returns {{[proxy: string]: CommandProxy}}
      */
     proxy() { return null;}
 }
