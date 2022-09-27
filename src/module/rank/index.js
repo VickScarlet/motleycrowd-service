@@ -76,14 +76,26 @@ export default class Rank extends IModule {
      * @returns {CommandResult}
      */
     #ranking(uid) {
-        return [0, {
+        return [0, this.user(uid)];
+    }
+
+    user(uid) {
+        const main = this.#rank.get('main').user;
+        const ten = this.#rank.get('ten').user;
+        const hundred = this.#rank.get('hundred').user;
+        return {
             update: this.#update,
+            size: {
+                main: main.size,
+                ten: ten.size,
+                hundred: hundred.size,
+            },
             ranking: {
-                main: this.#rank.get('main').user.get(uid),
-                ten: this.#rank.get('ten').user.get(uid),
-                hundred: this.#rank.get('hundred').user.get(uid),
+                main: main.get(uid),
+                ten: ten.get(uid),
+                hundred: hundred.get(uid),
             }
-        }];
+        };
     }
 
     /**
@@ -100,9 +112,5 @@ export default class Rank extends IModule {
                 return this.$db.score.addScore100(uid, ranking);
             default: return false;
         }
-    }
-
-    async reward(uid, { ranking: [type, ranking] }) {
-        return this.addScore(uid, type, ranking);
     }
 }

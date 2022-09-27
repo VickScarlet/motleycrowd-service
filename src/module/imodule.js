@@ -22,11 +22,11 @@ export default class IModule {
      * @abstract
      */
     get state() { return null; }
-    /** @readonly 错误码 */
+    /** @readonly */
     get $err() {return ErrorCode;}
     /** @readonly */
     get $core() { return this.#$core; }
-    /** @readonly 配置 */
+    /** @readonly */
     get $configure() { return this.#$configure; }
     /** @readonly @type {import('.').on} */
     get $on() { return this.#$core.on.bind(this.#$core); }
@@ -36,6 +36,8 @@ export default class IModule {
     get $emit() { return this.#$core.emit.bind(this.#$core); }
     /** @readonly */
     get $db() { return this.#$core.database; }
+    /** @readonly */
+    get $sheet() { return this.#$core.sheet; }
     /** @readonly */
     get $user() { return this.#$core.user; }
     /** @readonly */

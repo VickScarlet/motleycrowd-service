@@ -21,6 +21,7 @@
  */
 import {clone} from '../functions/index.js';
 import ErrorCode from './errorcode.js';
+import Sheet from './sheet/index.js';
 import Database from './database/index.js';
 import Question from './question/index.js';
 import User from './user/index.js';
@@ -28,6 +29,7 @@ import Game from './game/index.js';
 import Rank from './rank/index.js';
 import Asset from './asset/index.js';
 import Session from './session/index.js';
+import Achievement from './achievement/index.js';
 import process from 'process';
 
 /** 核心模块 */
@@ -43,32 +45,45 @@ export default class Core {
      * @param {import('./session').configure} conf.session
      * @returns {Core}
      */
-    constructor({database, question, user, game, rank, asset, session}) {
-
+    constructor({name, version}, {
+        sheet, database, question, user, game,
+        rank, asset, achievement, session
+    }) {
+        $l.system.info(`${name}@${version}`);
+        this.#version = version;
+        this.#sheet = new Sheet(this, sheet);
         this.#database = new Database(this, database);
         this.#question = new Question(this, question);
         this.#user = new User(this, user);
         this.#game = new Game(this, game);
         this.#rank = new Rank(this, rank);
         this.#asset = new Asset(this, asset);
+        this.#achievement = new Achievement(this, achievement);
         this.#session = new Session(this, session);
 
-        process.title = 'Metley Crowd Service';
         process.on('SIGINT', async ()=>{
-            logger.info('[System] recived SIGINT');
+            $l.system.info('recived SIGINT');
             await this.shutdown();
             process.exit(0);
         });
 
         process.on('exit', ()=>{
-            logger.info('[System]', 'bye.');
+            $l.system.info('bye.');
+        });
+
+        process.on('uncaughtException', err => {
+            $l.system.error(err);
+            process.exit(1);
         });
     }
 
+    #version;
     /** @private @type {Map<string, EventSet>}*/
     #events = new Map();
     /** @private @type {Map<string, ProxyMap>}*/
     #proxy = new Map();
+    /** @private 表 @type {Sheet} */
+    #sheet;
     /** @private 数据库 @type {Database} */
     #database;
     /** @private 题目 @type {Question} */
@@ -81,24 +96,30 @@ export default class Core {
     #rank;
     /** @private 资产 @type {Asset} */
     #asset;
+    /** @private 成就 @type {Achievement} */
+    #achievement;
     /** @private 会话 @type {Session} */
     #session;
 
-    /** @readonly 错误码 */
+    /** @readonly */
     get $err() {return ErrorCode;}
-    /** @readonly 数据库 */
+    /** @readonly */
+    get sheet() { return this.#sheet; }
+    /** @readonly */
     get database() { return this.#database; }
-    /** @readonly 题目 */
+    /** @readonly */
     get question() { return this.#question; }
-    /** @readonly 用户 */
+    /** @readonly */
     get user() { return this.#user; }
-    /** @readonly 游戏 */
+    /** @readonly */
     get game() { return this.#game; }
-    /** @readonly 排行榜 */
+    /** @readonly */
     get rank() { return this.#rank; }
-    /** @readonly 资产 */
+    /** @readonly */
     get asset() { return this.#asset; }
-    /** @readonly 会话 */
+    /** @readonly */
+    get achievement() { return this.#achievement; }
+    /** @readonly */
     get session() { return this.#session; }
 
     /**
@@ -154,8 +175,9 @@ export default class Core {
      * @returns {Promise<void>}
      */
     async initialize() {
-        logger.info('[System]', 'initializing...');
+        $l.system.info('initializing...');
         const start = Date.now();
+        await this.#sheet.initialize();
         await this.#database.initialize();
         await this.#question.initialize();
         await this.#user.initialize();
@@ -166,7 +188,8 @@ export default class Core {
         this.#setProxy('user', this.#user.proxy());
         this.#setProxy('game', this.#game.proxy());
         this.#setProxy('rank', this.#rank.proxy());
-        logger.info('[System]', 'initializeed in', Date.now() - start, 'ms.');
+        this.#setProxy('achv', this.#achievement.proxy());
+        $l.system.info('initializeed in', Date.now() - start, 'ms.');
     }
 
     /**
@@ -175,15 +198,17 @@ export default class Core {
      * @returns {Promise<void>}
      */
     async shutdown() {
-        logger.info('[System]', 'shutdowning...');
+        $l.system.info('shutdowning...');
         await this.#session.shutdown();
+        await this.#achievement.shutdown();
         await this.#asset.shutdown();
         await this.#rank.shutdown();
         await this.#game.shutdown();
         await this.#user.shutdown();
         await this.#question.shutdown();
         await this.#database.shutdown();
-        logger.info('[System]', 'shutdowned.');
+        await this.#sheet.shutdown();
+        $l.system.info('shutdowned.');
         return true;
     }
 
@@ -229,15 +254,17 @@ export default class Core {
     /** 基本信息 */
     baseinfo() {
         if(this.#i) return this.#i;
-        const info = { version: '0.0.1' };
+        const info = { version: this.#version };
 
         info.session = this.#session.$i;
+        info.achievement = this.#achievement.$i;
         info.asset = this.#asset.$i;
         info.rank = this.#rank.$i;
         info.game = this.#game.$i;
         info.user = this.#user.$i;
         info.question = this.#question.$i;
         info.database = this.#database.$i;
+        info.sheet = this.#sheet.$i;
 
         this.#i = clone(info);
         return info;

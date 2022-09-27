@@ -50,7 +50,7 @@ export default class Game extends Base {
      * 查档
      * @async
      * @param {string} id
-     * @return {gamedata|null}
+     * @return {Promise<gamedata|null>}
      */
     async get(id) {
         return this.$.findOne(
@@ -63,7 +63,7 @@ export default class Game extends Base {
      * 用户档案id列表
      * @async
      * @param {string} uid
-     * @return {{id: number,  created: Date}[]}
+     * @return {Promise<{id: number, created: Date}[]>}
      */
     async history(uid, update) {
         return this.$.find(

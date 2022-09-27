@@ -18,7 +18,6 @@ import Reward from "./reward.js";
 export default class Game extends IModule {
     /** @private 类型配置 @type {{[type: number]: RoomConfigure}} */
     #types;
-    #rewards;
     /** @private 私人房间 @type {Map<string, Room>} */
     #privates = new Map();
     /** @private 匹配房间 @type {Set<Room>} */
@@ -61,9 +60,6 @@ export default class Game extends IModule {
         /** @type {configure} */
         const {types, rewards} = this.$configure;
         this.#types = new Map(types);
-        this.#rewards = new Map(rewards.map(
-            ([type, rewards]) => [type, new Reward(rewards)]
-        ));
 
         for (const [type] of types) {
             this.#pairPending.set(type, []);
@@ -229,14 +225,11 @@ export default class Game extends IModule {
      * @returns {Room}
      */
     #newRoom(type, metas) {
-        const { limit, pool, reward } = this.#types.get(type);
+        const { limit, pool } = this.#types.get(type);
         const questions = this.$question.pool(pool);
         const room = new Room(
             this, limit, questions,
-            ()=>this.#settlement(
-                room, type,
-                this.#rewards.get(reward)
-            ),
+            ()=>this.#settlement(room),
         );
         room.meta.type = type;
         Object.assign(room.meta, metas);
@@ -250,8 +243,8 @@ export default class Game extends IModule {
      * @param {string} type
      * @param {Reward} reward
      */
-    async #settlement(room, type, reward) {
-        const {questions, users} = room;
+    async #settlement(room) {
+        const {questions, users, meta: {type, private: priv}} = room;
         this.#clear(room);
         const settlement = questions.settlement(users);
         const meta = questions.meta;
@@ -263,13 +256,12 @@ export default class Game extends IModule {
             );
             id = result.id;
             created = result.created;
-            await Promise.allSettled(
-                notGuest.map(async uid=>{
-                    const [,,ranking] = settlement[uid];
-                    await this.$asset.reward(uid, reward.get(ranking));
-                })
-            );
         }
+        await Promise.allSettled(notGuest.map(
+            uid=>this.#settlementUser(
+                uid, settlement[uid][2], type, priv
+            )
+        ));
         users.forEach(uid=>{
             this.$core.send(uid, 'game.settlement', {
                 id, created,
@@ -277,6 +269,31 @@ export default class Game extends IModule {
                 scores: settlement,
             });
         })
+    }
+
+    async #settlementUser(uid, ranking, type, priv) {
+        await this.$rank.addScore(uid, type, ranking);
+        const rewards = this.#types.get(type).reward(ranking);
+        if(rewards) await this.$asset.reward(uid, rewards);
+        // record
+        const c = {};
+        const s = {};
+        const records = {c, s};
+        if(priv) c.priv = 1;
+        else c.pair = 1;
+        if(ranking == 1) {
+            if(priv) {
+                c.privWin = 1;
+                s.privWin = true;
+            } else {
+                c[`${type}Win`] = 1;
+                s.pairWin = true;
+            }
+        } else {
+            if(priv) s.privWin = false;
+            else s.pairWin = false;
+        }
+        await this.$db.record.records(uid, records);
     }
 
     /**

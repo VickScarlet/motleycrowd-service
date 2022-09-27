@@ -54,6 +54,7 @@ export default class User extends IModule {
         if(banned) return [-1];
         await this.$db.user.cache(uid);
         this.$emit('user.authenticated', uid);
+        $l.user.debug('auth', uid);
         return [0, uid];
     }
 
@@ -81,6 +82,7 @@ export default class User extends IModule {
         if(!success) return [1];
         await this.$db.kvdata.set('register', ++this.#registerCount);
         await this.$db.user.create(uid, username);
+        $l.user.debug('regs', uid, username);
         return [0, uid];
     }
 
