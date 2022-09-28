@@ -40,6 +40,8 @@ export default class Session extends IModule {
      * @returns {Promise<void>}
      */
     async initialize() {
+        const start = Date.now();
+        this.$info('initializing...');
         /** @type {configure} */
         const {host, port, cron, hold} = this.$configure;
         const server = new Server(host, port, {
@@ -48,6 +50,7 @@ export default class Session extends IModule {
         });
         this.#server = server;
         this.#job = new CronJob(cron, () => this.#cronJob());
+        this.$info('initialized in', Date.now()-start, 'ms.');
     }
 
     /**
@@ -55,9 +58,11 @@ export default class Session extends IModule {
      * @returns {Promise<void>}
      */
     async shutdown() {
-        if(!this.#server) return;
+        this.$info('shutdowning...');
         this.#job.stop();
-        return this.#server.sclose();
+        if(this.#server)
+            await this.#server.sclose();
+        this.$info('shutdowned.');
     }
 
     #cronJob() {

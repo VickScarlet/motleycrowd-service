@@ -72,11 +72,14 @@ export default class Database extends IModule {
 
     /** @override */
     async initialize() {
+        const start = Date.now();
+        this.$info('initializing...');
         /** @type {configure} */
         const {url, options, dbName, model: mc, gsync} = this.$configure;
         this.#gsync = gsync;
         const client = new MongoClient(url, options);
         this.#client = client;
+        this.$info(`Connected to ${url}`, options);
         await client.connect();
         const db = client.db(dbName);
         const collections = await db.listCollections().toArray();
@@ -85,10 +88,13 @@ export default class Database extends IModule {
             let coll;
             if(!set.has(collection)) {
                 const {options} = Model;
+                this.$info(`create collection [${collection}]`, options);
                 coll = await db.createCollection(collection, options);
             } else {
+                this.$info(`load collection [${collection}]`);
                 coll = db.collection(collection);
             }
+            this.$debug(`create indexes [${collection}]`, Model.indexes);
             await coll.createIndexes(Model.indexes);
             return new Model(coll);
         };
@@ -110,13 +116,15 @@ export default class Database extends IModule {
             create(Asset, mc.Asset),
             create(Record, mc.Record),
         ]);
+        this.$info('initialized in', Date.now()-start, 'ms.');
     }
 
     /** @override */
     async shutdown() {
-        if(this.#client) {
+        this.$info('shutdowning...');
+        if(this.#client)
             await this.#client.close();
-        }
+        this.$info('shutdowned.');
     }
 
     get(model) {

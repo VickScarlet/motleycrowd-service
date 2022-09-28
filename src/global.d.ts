@@ -23,7 +23,7 @@ declare global {
     let $logger = new Proxy({
         [category]: Log4js.getLogger(category)
     });
-    let $l = logger;
+    let $l = $logger;
     let $ = {
         utils: $utils,
         logic: $logic,

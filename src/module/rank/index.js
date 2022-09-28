@@ -33,15 +33,20 @@ export default class Rank extends IModule {
 
     /** @override */
     async initialize() {
+        const start = Date.now();
+        this.$info('initializing...');
         /** @type {configure} */
         const { cron } = this.$configure;
         this.#job = new CronJob(cron, () => this.#refresh());
         await this.#refresh();
+        this.$info('initialized in', Date.now()-start, 'ms.');
     }
 
     /** @override */
     async shutdown() {
+        this.$info('shutdowning...');
         this.#job.stop();
+        this.$info('shutdowned.');
     }
 
     /**
@@ -53,7 +58,10 @@ export default class Rank extends IModule {
         const fn = (k, g) => this.$db.score[g]()
             .then(r=>r.map(({uid, rank})=>([uid, rank])))
             .then(r=>({rank: r.slice(0, 100),user: new Map(r)}))
-            .then(d=>this.#rank.set(k, d));
+            .then(d=>{
+                this.#rank.set(k, d);
+                this.$debug(`refreshed [${k}]`, d.rank);
+            });
         this.#update = new Date().toISOString();
         return Promise.allSettled([
             fn('main', 'rank'),

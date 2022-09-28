@@ -80,6 +80,8 @@ export default class Game extends IModule {
      * @returns {Promise<void>}
      */
     async initialize() {
+        const start = Date.now();
+        this.$info('initializing...');
         /** @type {configure} */
         const {types} = this.$configure;
         this.#types = new Map(types);
@@ -90,6 +92,7 @@ export default class Game extends IModule {
         $on('user.logout', uid => this.leave(uid));
         $on('user.authenticated', uid => this.#resume(uid));
         $on('user.pending', uid => this.#pending(uid));
+        this.$info('initialized in', Date.now()-start, 'ms.');
     }
 
     /**
@@ -271,6 +274,7 @@ export default class Game extends IModule {
         this.#clear(room);
         const settlement = questions.settlement(users);
         const meta = questions.meta;
+        this.$debug('settlement', type, priv, meta, settlement);
         const notGuest = [...users].filter(uid=>!this.$user.isGuest(uid));
         let id, created;
         if(notGuest.length > 0) {
@@ -280,7 +284,7 @@ export default class Game extends IModule {
             id = result.id;
             created = result.created;
         }
-        await Promise.allSettled(notGuest.map(
+        await Promise.all(notGuest.map(
             uid=>this.#settlementUser(
                 uid, settlement[uid][2], type, priv
             )

@@ -7,10 +7,13 @@ export default class IModule {
      * @param {Object<string, any>} configure
      * @returns {IModule}
      */
-    constructor(core, configure = {}) {
+    constructor(name, core, configure = {}) {
+        this.#name = name;
         this.#$core = core;
         this.#$configure = configure;
     }
+
+    #name = 'IModule';
 
     /** @private*/
     #$core;
@@ -45,6 +48,16 @@ export default class IModule {
     /** @readonly */
     get $asset() { return this.#$core.asset; }
 
+    get #logger() { return $Log4js.getLogger(this.#name); }
+    $trace(...args) { this.#logger.trace(...args); }
+    $log(...args) { this.#logger.log(...args); }
+    $debug(...args) { this.#logger.debug(...args); }
+    $info(...args) { this.#logger.info(...args); }
+    $warn(...args) { this.#logger.warn(...args); }
+    $error(...args) { this.#logger.error(...args); }
+    $fatal(...args) { this.#logger.fatal(...args); }
+    $mark(...args) { this.#logger.mark(...args); }
+
     /**
      * 初始化
      * @async
@@ -52,7 +65,7 @@ export default class IModule {
      * @returns {Promise<void>}
      */
     async initialize() {
-        // empty
+        this.$debug('module not implemented initialize()');
     }
 
     /**
@@ -62,7 +75,7 @@ export default class IModule {
      * @returns {Promise<void>}
      */
     async shutdown() {
-        // empty
+        this.$debug('module not implemented shutdown()');
     }
 
     /**

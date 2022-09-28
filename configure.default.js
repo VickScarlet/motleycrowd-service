@@ -41,17 +41,19 @@ export function core() { return {
 export function log4js() { return {
     appenders: {
         out: { type: "stdout" },
-        daily: {
+        daily: { type: "logLevelFilter", appender:"dailyFile", level: "info" },
+        dailyFile: {
             type: "dateFile",
             filename: "logs/daily/app",
             pattern: "yyyy-MM-dd.log",
             alwaysIncludePattern: true,
             compress: true,
             backups: 30,
+            level: "info",
             // layout: { type: "pattern", pattern: "[%d %p] %c - %m" },
         },
-        error: { type: "logLevelFilter", appender:"file", level: "error" },
-        file: {
+        error: { type: "logLevelFilter", appender:"errorFile", level: "error" },
+        errorFile: {
             type: "file",
             filename: "logs/error.log",
             maxLogSize: 10485760,

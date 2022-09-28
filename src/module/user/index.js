@@ -31,9 +31,13 @@ export default class User extends IModule {
      * @returns {Promise<void>}
      */
     async initialize() {
+        const start = Date.now();
+        this.$info('initializing...');
         /** @type {configure} */
         this.#registerCount = await this.$db.kvdata.get('register') || 0;
+        this.$info('total register user count', this.#registerCount);
         $on('session.leave', uid => this.logout(uid));
+        this.$info('initialized in', Date.now()-start, 'ms.');
     }
 
     /**
@@ -57,7 +61,7 @@ export default class User extends IModule {
         if(banned) return [-1];
         await this.$db.user.cache(uid);
         $emit('user.authenticated', uid);
-        $l.user.debug('auth', uid);
+        this.$debug('auth', uid);
         return [0, uid];
     }
 
@@ -85,7 +89,7 @@ export default class User extends IModule {
         if(!success) return [1];
         await this.$db.kvdata.set('register', ++this.#registerCount);
         await this.$db.user.create(uid, username);
-        $l.user.debug('regs', uid, username);
+        this.$debug('regs', uid, username);
         return [0, uid];
     }
 

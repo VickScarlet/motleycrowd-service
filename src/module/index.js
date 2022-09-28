@@ -50,15 +50,15 @@ export default class Core {
     }) {
         $l.system.info(`${name}@${version}`);
         this.#version = version;
-        this.#sheet = new Sheet(this, sheet);
-        this.#database = new Database(this, database);
-        this.#question = new Question(this, question);
-        this.#user = new User(this, user);
-        this.#game = new Game(this, game);
-        this.#rank = new Rank(this, rank);
-        this.#asset = new Asset(this, asset);
-        this.#achievement = new Achievement(this, achievement);
-        this.#session = new Session(this, session);
+        this.#sheet = new Sheet('sheet', this, sheet);
+        this.#database = new Database('database', this, database);
+        this.#question = new Question('question', this, question);
+        this.#user = new User('user', this, user);
+        this.#game = new Game('game', this, game);
+        this.#rank = new Rank('rank', this, rank);
+        this.#asset = new Asset('asset', this, asset);
+        this.#achievement = new Achievement('achievement', this, achievement);
+        this.#session = new Session('session', this, session);
 
         process.on('SIGINT', async ()=>{
             $l.system.info('recived SIGINT');
@@ -186,6 +186,7 @@ export default class Core {
      * @returns {Promise<CommandResult>}
      */
     async useraction(uid, {command, data}) {
+        $l.system.debug('useraction', uid, command, data);
         if(!command) return [this.$err.NO_CMD];
         const [p, cmd] = command.split(".");
         const proxy = this.#proxy.get(p);
