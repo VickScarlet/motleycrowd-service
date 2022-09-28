@@ -74,6 +74,8 @@ export default class Core {
             $l.system.error(err);
             process.exit(1);
         });
+
+        $on('session.leave', uid=>this.#attach.delete(uid));
     }
 
     #version;
@@ -97,6 +99,8 @@ export default class Core {
     #achievement;
     /** @private 会话 @type {Session} */
     #session;
+
+    #attach = new Map();
 
     /** @readonly */
     get $err() {return ErrorCode;}
@@ -263,5 +267,20 @@ export default class Core {
             session: this.#session.state,
             game: this.#game.state,
         };
+    }
+
+    setAttach(uid, key, value) {
+        if(!this.#attach.has(uid))
+            this.#attach.set(uid, {});
+        this.#attach.get(uid)[key] = value;
+    }
+
+    getAttach(uid) {
+        const sync = this.#database.sync(uid);
+        if(sync) this.setAttach(uid, 'sync', sync);
+        const attach = this.#attach.get(uid);
+        this.#attach.delete(uid);
+        if(!attach) return null;
+        return [uid, attach];
     }
 }

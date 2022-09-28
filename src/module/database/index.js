@@ -149,7 +149,7 @@ export default class Database extends IModule {
             if(s) sync.push(model, s);
         });
         if(!sync.length) return null;
-        return [uid, sync];
+        return sync;
     }
 
     usync(uid) {

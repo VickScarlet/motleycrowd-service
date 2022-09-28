@@ -6,21 +6,6 @@ import {on, off, emit} from './event/index.js';
 import Log4js from 'log4js';
 import Core from './module/index.js';
 
-global.$ = {};
-global.$.utils =
-global.$u =
-global.$utils = utils;
-global.$.logic =
-global.$logic = logic;
-global.$.normalize =
-global.$norml = normalize;
-global.$normalize = normalize;
-global.$on = on;
-global.$off = off;
-global.$emit = emit;
-global.$.event =
-global.$event = {on, off, emit};
-
 async function configure(mods, lists) {
     const configure = {};
     for (const mod of mods) {
@@ -38,8 +23,8 @@ async function configure(mods, lists) {
     return configure;
 }
 
-function initLogger({appenders, categories}) {
-    Log4js.configure({appenders, categories});
+async function initLogger(configure) {
+    Log4js.configure(configure);
     global.$.Log4js =
     global.$Log4js = Log4js;
     global.$.logger =
@@ -63,12 +48,27 @@ async function initCore(configure) {
 }
 
 export async function start(cfgList) {
+    global.$ = {};
+    global.$.utils =
+    global.$u =
+    global.$utils = utils;
+    global.$.logic =
+    global.$logic = logic;
+    global.$.normalize =
+    global.$norml = normalize;
+    global.$normalize = normalize;
+    global.$on = on;
+    global.$off = off;
+    global.$emit = emit;
+    global.$.event =
+    global.$event = {on, off, emit};
+
     const { log4js, core } = await configure(
         ['core', 'log4js'],
         cfgList
     );
-    initLogger(log4js);
-    initCore(core);
+    await initLogger(log4js);
+    await initCore(core);
 }
 
 export default start;

@@ -13,7 +13,6 @@
  */
 import IModule from "../imodule.js";
 import Room from "./room.js";
-import Reward from "./reward.js";
 
 export default class Game extends IModule {
     /** @private 类型配置 @type {{[type: number]: RoomConfigure}} */
@@ -89,9 +88,10 @@ export default class Game extends IModule {
         for (const [type] of types) {
             this.#pairPending.set(type, []);
         }
-        $on('user.logout', uid => this.leave(uid));
-        $on('user.authenticated', uid => this.#resume(uid));
-        $on('user.pending', uid => this.#pending(uid));
+
+        $on('session.authenticate', uid => this.#resume(uid));
+        $on('session.pending', uid => this.#pending(uid));
+        $on('session.leave', uid => this.leave(uid));
         this.$info('initialized in', Date.now()-start, 'ms.');
     }
 
@@ -128,7 +128,7 @@ export default class Game extends IModule {
             this.#leave(uid);
             return;
         }
-        this.$core.send(uid, `game.resume`, data);
+        this.$core.setAttach(uid, 'game.resume', data);
     }
 
     /**
