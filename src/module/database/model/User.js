@@ -1,5 +1,4 @@
 import Base from '../base.js';
-import { clone } from '../../../functions/index.js';
 
 /**
  * @typedef {Object} userdata
@@ -81,7 +80,7 @@ export default class User extends Base {
      */
     async find(uid) {
         const data = this.#cache.get(uid);
-        if(data) return clone(data);
+        if(data) return $utils.clone(data);
         return this.findOne(
             { uid },
             { projection: { _id: 0 } }
@@ -99,7 +98,7 @@ export default class User extends Base {
         const result = [];
         for (const uid of uids) {
             const data = this.#cache.get(uid);
-            if(data) result.push(clone(data));
+            if(data) result.push($utils.clone(data));
             else notInCache.push(uid);
         }
         if(notInCache.length < 1) return result;

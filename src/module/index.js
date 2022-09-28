@@ -19,7 +19,6 @@
  * @returns {void}
  *
  */
-import {clone} from '../functions/index.js';
 import ErrorCode from './errorcode.js';
 import Sheet from './sheet/index.js';
 import Database from './database/index.js';
@@ -225,7 +224,24 @@ export default class Core {
         const proxy = this.#proxy.get(p);
         if(!proxy || !proxy.has(cmd))
             return [this.$err.NO_CMD];
-        return proxy.get(cmd)(uid, data);
+        const action = proxy.get(cmd);
+        const ps = action.ps;
+        const args = [];
+        if(!ps) {
+            args.push(data);
+        } else if(Array.isArray(ps)) {
+            for(const {key, type, def, opt} of ps) {
+                const arg = data[key];
+                const norm = $norml[type](arg, def, opt);
+                args.push(norm);
+            }
+        } else {
+            const {type, def, opt} = ps;
+            const norm = $norml[type](data, def, opt);
+            args.push(norm);
+        }
+
+        return action.do(uid, ...args);
     }
 
     /**
@@ -266,7 +282,7 @@ export default class Core {
         info.database = this.#database.$i;
         info.sheet = this.#sheet.$i;
 
-        this.#i = clone(info);
+        this.#i = $utils.clone(info);
         return info;
     }
 

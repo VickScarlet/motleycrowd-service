@@ -1,6 +1,5 @@
 import IModule from "../imodule.js";
 import Settlement from "./settlement.js";
-import { exec } from '../../functions/logic.js';
 
 export default class Achievement extends IModule {
 
@@ -28,7 +27,7 @@ export default class Achievement extends IModule {
         const [success, values] =
             await this.#gets(uid, condition.values, params);
         if(!success) return false;
-        return exec(condition.checks, values);
+        return $logic.exec(condition.checks, values);
     }
 
     async #gets(uid, values, params) {

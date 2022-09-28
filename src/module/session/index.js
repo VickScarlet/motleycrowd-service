@@ -118,17 +118,21 @@ export default class Session extends IModule {
     #limit = new Set();
 
     async #auth(sid, guid, type, username, password, sync={}) {
+        if(this.#uid.has(sid))
+            return [guid, [0, this.#uid.get(sid)]];
         // AUTH LIMIT
-        if(this.#limit.has(sid)) return [this.$err.AUTH_LIMIT];
+        if(this.#limit.has(sid))
+            return [guid, [this.$err.AUTH_LIMIT]];
         this.#limit.add(sid);
         setTimeout(() => this.#limit.delete(sid), 5000);
         // AUTH LIMIT
-
         let result;
         let gsync = false;
+        username = $norml.string(username, '');
+        password = $norml.string(password, '');
         switch(type) {
             case this.#AUTH_REGISTER:
-                result = await this.$user.register(username, password);
+                result = await this.$core.useraction(username, password);
                 break;
             case this.#AUTH_LOGIN:
                 result = await this.$user.authenticate(username, password);
@@ -138,7 +142,7 @@ export default class Session extends IModule {
                 result = this.$user.guest();
                 break;
             default:
-                return [guid, this.$err.PARAM_ERROR];
+                return [guid, [this.$err.PARAM_ERROR]];
         }
         const [code, uid] = result;
         if(code == -1) {

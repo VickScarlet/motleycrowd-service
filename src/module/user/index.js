@@ -19,7 +19,10 @@ export default class User extends IModule {
 
     proxy() {
         return {
-            get: (_, uids) => this.#get(uids),
+            get: {
+                ps: {type: 'strArray', def: null},
+                do: (_, uids) => this.#get(uids),
+            }
         };
     }
 
@@ -111,7 +114,7 @@ export default class User extends IModule {
      * 是否为游客
      * @param {uid} uid
      */
-     isGuest(uid) {
+    isGuest(uid) {
         return uid[0] == '#';
     }
 

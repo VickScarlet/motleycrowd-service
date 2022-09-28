@@ -1,7 +1,6 @@
 /**
  * @typedef {{limit: number, pool: number}} configure
  */
-import { delay, batch } from '../../functions/index.js';
 export default class Room {
     /**
      * @typedef {import('.').uid} uid
@@ -22,7 +21,7 @@ export default class Room {
         this.#questions = questions;
         this.#settlement = settlement;
         // join leave batch
-        this.#jlBatch = batch(
+        this.#jlBatch = $utils.batch(
             last=>{
                 const join = [];
                 const leave = [];
@@ -44,7 +43,7 @@ export default class Room {
         );
 
         // answer batch
-        this.#answerBatch = batch(
+        this.#answerBatch = $utils.batch(
             ()=>{
                 if(this.#questions.end) return;
                 const {idx, question: {size}} = this.#questions;
@@ -136,7 +135,7 @@ export default class Room {
         if(this.full)
             (async ()=>{
                 await this.#listSend('ready', this.#startWait);
-                await delay(this.#startWait);
+                await $utils.delay(this.#startWait);
                 if(!this.full) {
                     await this.#listSend('pending', this.#users.size);
                     return;

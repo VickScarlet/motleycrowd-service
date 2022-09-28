@@ -1,4 +1,3 @@
-import { clone, objDiff } from '../../functions/index.js';
 export default class Base {
     /** @type {import('mongodb').CreateCollectionOptions} */
     static options;
@@ -71,7 +70,7 @@ export default class Base {
         if(this.#sync.has(uid)) {
             const [data, last] = this.#sync.get(uid);
             if(!data) return null;
-            const diff = objDiff(last, data);
+            const diff = $utils.objDiff(last, data);
             this.#sync.set(uid, [null,data]);
             return diff;
         }

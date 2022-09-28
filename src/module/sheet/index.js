@@ -1,5 +1,4 @@
 import IModule from "../imodule.js";
-import {clone} from "../../functions/index.js";
 
 export default class Sheet extends IModule {
     /** @override */
@@ -26,7 +25,7 @@ export default class Sheet extends IModule {
 
     get(sheet, ...keys) {
         const data = this.#get(sheet, ...keys);
-        return this.#freeze? data: clone(data);
+        return this.#freeze? data: $utils.clone(data);
     }
 
     keys(sheet) {

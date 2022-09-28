@@ -14,8 +14,13 @@ import { CronJob } from "cron";
 export default class Rank extends IModule {
     proxy() {
         return {
-            get: (_, ranks) => this.#get(ranks),
-            ranking: (uid) => this.#ranking(uid),
+            get: {
+                ps: {type: 'strArray', def: null},
+                do: (_, ranks)=>this.#get(ranks),
+            },
+            ranking: {
+                do: uid=>this.#ranking(uid),
+            },
         };
     }
 

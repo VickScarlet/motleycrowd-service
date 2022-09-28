@@ -43,12 +43,35 @@ export default class Game extends IModule {
 
     proxy() {
         return {
-            create: (uid, {type}) => this.create(uid, type),
-            join: (uid, {room}) => this.join(uid, room),
-            pair: (uid, {type}) => this.pair(uid, type),
-            leave: uid => this.leave(uid),
-            answer: (uid, [idx, answer]) => this.answer(uid, answer, idx),
-            history: (uid, {update}) => this.history(uid, update),
+            create: {
+                ps: [{key: 'type', type: 'number', def: 0}],
+                do: (uid, type)=>this.create(uid, type),
+            },
+            join: {
+                ps: [{key: 'room', type: 'string', def: ''}],
+                do: (uid, room)=>this.join(uid, room),
+            },
+            pair: {
+                ps: [{key: 'type', type: 'number', def: 0}],
+                do: (uid, type)=>this.pair(uid, type),
+            },
+            leave: {
+                do: uid=>this.leave(uid),
+            },
+            answer: {
+                ps: [
+                    {key: 0, type: 'number', def: 0},
+                    {key: 1, type: 'string', def: ''},
+                ],
+                do: (uid, idx, ans)=>this.answer(uid, idx, ans),
+            },
+            history: {
+                ps: [
+                    {key: 0, type: 'number', def: 0},
+                    {key: 1, type: 'number', def: 0},
+                ],
+                do: (uid, skip, limit)=>this.history(uid, skip, limit),
+            }
         };
     }
 
@@ -58,7 +81,7 @@ export default class Game extends IModule {
      */
     async initialize() {
         /** @type {configure} */
-        const {types, rewards} = this.$configure;
+        const {types} = this.$configure;
         this.#types = new Map(types);
 
         for (const [type] of types) {
@@ -329,11 +352,9 @@ export default class Game extends IModule {
         return this.$core.listSend(uids, `game.${cmd}`, data);
     }
 
-    async history(uid, update) {
-        update = new Date(update);
-        if(!update.getTime())
-            update = new Date(0);
-        const result = await this.$db.game.history(uid, update);
+    async history(uid, skip, limit) {
+        limit = Math.min(limit, 10);
+        const result = await this.$db.game.history(uid, skip, limit);
         return [0, result];
     }
 }

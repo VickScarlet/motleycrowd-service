@@ -65,15 +65,16 @@ export default class Game extends Base {
      * @param {string} uid
      * @return {Promise<{id: number, created: Date}[]>}
      */
-    async history(uid, update) {
-        return this.$.find(
-            { users: uid, created: {
-                $gt: update
-            } },
-            { projection: {
+    async history(uid, skip=0, limit=1) {
+        return this.$.find({
+            users: uid,
+            created: { $gt: update },
+        }, {
+            projection: {
                 id: 1, created: 1,
                 [`scores.${uid}`]: 1
-            } }
-        ).toArray();
+            },
+            skip, limit,
+        }).toArray();
     }
 }

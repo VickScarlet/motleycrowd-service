@@ -1,6 +1,19 @@
+import * as utils from './functions/index.js';
+import * as logic from './functions/logic.js';
+import * as normalize from './functions/normalize.js';
 import { readFile } from 'fs/promises';
 import Log4js from 'log4js';
 import Core from './module/index.js';
+
+global.$ = {};
+global.$.utils =
+global.$u =
+global.$utils = utils;
+global.$.logic =
+global.$logic = logic;
+global.$.normalize =
+global.$norml = normalize;
+global.$normalize = normalize;
 
 async function configure(mods, lists) {
     const configure = {};
@@ -21,9 +34,11 @@ async function configure(mods, lists) {
 
 function initLogger({appenders, categories}) {
     Log4js.configure({appenders, categories});
-    global.Log4js = Log4js;
+    global.$.Log4js =
+    global.$Log4js = Log4js;
+    global.$.logger =
     global.$l =
-    global.logger = new Proxy(Log4js, {
+    global.$logger = new Proxy(Log4js, {
         get(target, key) { return target.getLogger(key); }
     });
 }
@@ -35,8 +50,9 @@ async function initCore(configure) {
         )
     );
     const core = new Core(meta, configure);
-    global.$ =
-    global.core = core;
+    global.$.core =
+    global.$$ =
+    global.$core = core;
     await core.initialize();
 }
 
