@@ -23,7 +23,7 @@ export default class Record extends Base {
     async set(uid, records) {
         return this.#update(uid, { $set: {
             updated: new Date(),
-            ...this.$flat({records}, 2)
+            ...$utils.flat({records}, 2)
         }});
     }
 
@@ -32,7 +32,7 @@ export default class Record extends Base {
         const update = {
             $set: {updated: new Date()}
         };
-        const flat = (k, v) => this.$flat({records: {[k]: v}}, 2);
+        const flat = (k, v) => $utils.flat({records: {[k]: v}}, 2);
         if(c) update.$inc = flat('c', c);
         if(m) update.$max = flat('m', m);
         if(s) {

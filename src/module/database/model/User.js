@@ -117,7 +117,7 @@ export default class User extends Base {
      */
     async setMeta(uid, meta) {
         const update = {
-            $set: this.$flat({
+            $set: $utils.flat({
                 meta, updated: new Date()
             }, 1)
         };

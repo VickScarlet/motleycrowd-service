@@ -9,7 +9,7 @@ export default class Asset extends Base {
         const ret = await this.$.findOneAndUpdate(
             { uid },
             {
-                $inc: this.$flat({assets}, 2),
+                $inc: $utils.flat({assets}, 2),
                 $set: { updated: new Date() }
             },
             {
@@ -28,7 +28,7 @@ export default class Asset extends Base {
     }
 
     async consume(uid, assets) {
-        const flated = this.$flat({assets}, 2);
+        const flated = $utils.flat({assets}, 2);
         const check = {uid};
         for(const key in flated) {
             const value = flated[key];
@@ -52,7 +52,7 @@ export default class Asset extends Base {
     }
 
     async check(uid, assets) {
-        const flated = this.$flat({assets}, 2);
+        const flated = $utils.flat({assets}, 2);
         const check = {uid};
         for(const key in flated) {
             check[key] = {
