@@ -9,7 +9,12 @@ export default class Asset extends IModule {
     async reward(uid, rewardId) {
         const assets = this.$sheet.get('reward', rewardId, 'rewards');
         if(!assets) return false;
-        return this.rewardAssets(uid, assets);
+        const result = await this.rewardAssets(uid, assets);
+        if(!assets.money) return result;
+        // record
+        const record = {c: assets.money};
+        await this.$db.record.records(uid, record);
+        return result;
     }
 
     async check(uid, assets) {
