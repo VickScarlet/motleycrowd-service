@@ -1,5 +1,5 @@
 import * as iutils from './functions/index.js';
-import * as ilogic from './functions/$logic.js';
+import * as ilogic from './functions/logic.js';
 import * as inormalize from './functions/normalize.js';
 import {on, off, emit} from './event/index.js';
 import iLog4js from 'log4js';
