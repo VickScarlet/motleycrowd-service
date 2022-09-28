@@ -77,8 +77,6 @@ export default class Core {
     }
 
     #version;
-    /** @private @type {Map<string, EventSet>}*/
-    #events = new Map();
     /** @private @type {Map<string, ProxyMap>}*/
     #proxy = new Map();
     /** @private 表 @type {Sheet} */
@@ -120,37 +118,6 @@ export default class Core {
     get achievement() { return this.#achievement; }
     /** @readonly */
     get session() { return this.#session; }
-
-    /**
-     * 监听事件
-     * @type {on}
-     */
-    on(event, callback) {
-        if(!this.#events.has(event))
-            this.#events.set(event, new Set());
-        const callbacks = this.#events.get(event);
-        callbacks.add(callback);
-    }
-    /**
-     * 取消监听
-     * @type {off}
-     */
-    off(event, callback) {
-        if(!this.#events.has(event)) return;
-        const callbacks = this.#events.get(event);
-        callbacks.delete(callback);
-    }
-    /**
-     * 发送事件
-     * @type {emit}
-     */
-    emit(event, data) {
-        if(!this.#events.has(event)) return;
-        const callbacks = this.#events.get(event);
-        callbacks.forEach(callback => {
-            callback(data);
-        });
-    }
 
     /**
      * 设置代理

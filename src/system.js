@@ -1,7 +1,8 @@
+import { readFile } from 'fs/promises';
 import * as utils from './functions/index.js';
 import * as logic from './functions/logic.js';
 import * as normalize from './functions/normalize.js';
-import { readFile } from 'fs/promises';
+import {on, off, emit} from './event/index.js';
 import Log4js from 'log4js';
 import Core from './module/index.js';
 
@@ -14,6 +15,11 @@ global.$logic = logic;
 global.$.normalize =
 global.$norml = normalize;
 global.$normalize = normalize;
+global.$on = on;
+global.$off = off;
+global.$emit = emit;
+global.$.event =
+global.$event = {on, off, emit};
 
 async function configure(mods, lists) {
     const configure = {};

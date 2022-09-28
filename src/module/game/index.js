@@ -63,7 +63,7 @@ export default class Game extends IModule {
                     {key: 0, type: 'number', def: 0},
                     {key: 1, type: 'string', def: ''},
                 ],
-                do: (uid, idx, ans)=>this.answer(uid, idx, ans),
+                do: (uid, idx, ans)=>this.answer(uid, ans, idx),
             },
             history: {
                 ps: [
@@ -87,9 +87,9 @@ export default class Game extends IModule {
         for (const [type] of types) {
             this.#pairPending.set(type, []);
         }
-        this.$on('user.logout', uid => this.leave(uid));
-        this.$on('user.authenticated', uid => this.#resume(uid));
-        this.$on('user.pending', uid => this.#pending(uid));
+        $on('user.logout', uid => this.leave(uid));
+        $on('user.authenticated', uid => this.#resume(uid));
+        $on('user.pending', uid => this.#pending(uid));
     }
 
     /**

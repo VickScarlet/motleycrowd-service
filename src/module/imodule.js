@@ -28,12 +28,6 @@ export default class IModule {
     get $core() { return this.#$core; }
     /** @readonly */
     get $configure() { return this.#$configure; }
-    /** @readonly @type {import('.').on} */
-    get $on() { return this.#$core.on.bind(this.#$core); }
-    /** @readonly @type {import('.').off} */
-    get $off() { return this.#$core.off.bind(this.#$core); }
-    /** @readonly @type {import('.').emit} */
-    get $emit() { return this.#$core.emit.bind(this.#$core); }
     /** @readonly */
     get $db() { return this.#$core.database; }
     /** @readonly */

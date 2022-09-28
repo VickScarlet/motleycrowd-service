@@ -66,7 +66,7 @@ export default class Session extends IModule {
             if(now < time) continue;
             users.add(uid);
             this.close(uid, 3001, 'ACron');
-            this.$emit('session.leave', uid);
+            $emit('session.leave', uid);
         }
     }
 
