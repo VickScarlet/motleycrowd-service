@@ -65,6 +65,15 @@ export default class Achievement extends IModule {
                 break;
             case 'rank':
                 t = this.$rank.user(uid);
+                if (t) {
+                    t = t[0];
+                    const data = {};
+                    for(const rank of t) {
+                        const [ranking, size] = t[rank];
+                        data[rank] = {ranking, size};
+                    }
+                    t = data;
+                }
                 get = (...args)=>this.#deep(t, ...args);
                 break;
             default: return [false];

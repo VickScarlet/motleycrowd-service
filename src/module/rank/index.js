@@ -19,7 +19,8 @@ export default class Rank extends IModule {
                 do: (_, ranks)=>this.#get(ranks),
             },
             ranking: {
-                do: uid=>this.#ranking(uid),
+                ps: [{key: 'user', type: 'string', def: null}],
+                do: (_, uid)=>this.#ranking(uid),
             },
         };
     }
@@ -29,7 +30,7 @@ export default class Rank extends IModule {
     /** @private @type {Map<string, rank>} */
     #rank = new Map();
     /** @private @type {string} */
-    #update;
+    #expired;
 
     /** @override */
     async initialize() {
@@ -62,7 +63,10 @@ export default class Rank extends IModule {
                 this.#rank.set(k, d);
                 this.$debug(`refreshed [${k}]`, d.rank);
             });
-        this.#update = new Date().toISOString();
+        this.#expired = this.#job
+            .nextDate()
+            .toJSDate()
+            .toISOString();
         return Promise.allSettled([
             fn('main', 'rank'),
             fn('ten', 'rank10'),
@@ -81,7 +85,7 @@ export default class Rank extends IModule {
         ranks = {};
         for(const rank of list)
             ranks[rank] = this.#rank.get(rank).rank;
-        return [0, { ranks, update: this.#update }];
+        return [0, { ranks, expired: this.#expired }];
     }
 
     /**
@@ -96,19 +100,15 @@ export default class Rank extends IModule {
         const main = this.#rank.get('main').user;
         const ten = this.#rank.get('ten').user;
         const hundred = this.#rank.get('hundred').user;
-        return {
-            update: this.#update,
-            size: {
-                main: main.size,
-                ten: ten.size,
-                hundred: hundred.size,
-            },
-            ranking: {
-                main: main.get(uid),
-                ten: ten.get(uid),
-                hundred: hundred.get(uid),
-            }
-        };
+        const ranking = {};
+        if(main.has(uid))
+            ranking.main = [main.get(uid), main.size];
+        if(ten.has(uid))
+            ranking.ten = [ten.get(uid), ten.size];
+        if(hundred.has(uid))
+            ranking.hundred = [hundred.get(uid), hundred.size];
+        if(!Object.keys(ranking).length) return null;
+        return [ranking, this.#expired]
     }
 
     /**
