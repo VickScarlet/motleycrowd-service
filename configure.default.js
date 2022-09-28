@@ -1,10 +1,8 @@
-import achievement from './data/achievement.js';
-import badge from './data/badge.js';
-import card from './data/card.js';
-
 export function core() { return {
     sheet: {
-        sheets: { achievement, badge, card },
+        load: sheet=>import(`./data/${sheet}.js`)
+            .then(module=> module.default)
+            .catch(_=>null),
         freeze: true,
     },
     database: {

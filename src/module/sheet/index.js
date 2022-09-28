@@ -1,21 +1,30 @@
 import IModule from "../imodule.js";
 
+const SHEETS = [ 'achievement', 'reward' ];
 export default class Sheet extends IModule {
     /** @override */
     async initialize() {
-        const { sheets, freeze } = this.$configure;
-        this.#sheets = sheets;
-        if(freeze) {
-            this.#freeze = true;
-            Object.freeze(this.#sheets);
+        const { load, freeze } = this.$configure;
+        this.#freeze = !!freeze;
+        for(const name of SHEETS) {
+            const sheet = await load(name);
+            if(!sheet)
+                throw new Error(`sheet [${name}] load failed!!`);
+            if(freeze) Object.freeze(sheet);
+            $l.sheet.debug(`sheet [${name}] loaded.`);
+            this.#sheets[sheet] = sheet;
         }
     }
 
-    #sheets;
+    #sheets = new Map();
     #freeze = false;
 
     #get(sheet, ...keys) {
-        let data = this.#sheets[sheet];
+        let data = this.#sheets.get(sheet);
+        if(!data) {
+            $l.sheet.warn(`sheet [${sheet}] not found.`);
+            return null;
+        }
         for (const key of keys) {
             if (!data) return null;
             data = data[key];
@@ -29,6 +38,11 @@ export default class Sheet extends IModule {
     }
 
     keys(sheet) {
-        return Object.keys(this.#get(sheet));
+        let data = this.#sheets.get(sheet);
+        if(!data) {
+            $l.sheet.warn(`sheet [${sheet}] not found.`);
+            return null;
+        }
+        return Object.keys(data);
     }
 }
