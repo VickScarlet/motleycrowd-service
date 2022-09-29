@@ -1,8 +1,8 @@
 export default class Settlement {
     constructor(settlement, uid) {
         if(!settlement) return;
-        const {type, questions, scores, users} = settlement;
-        if(!users[uid]) return;
+        const {type, questions, scores} = settlement;
+        if(!scores[uid]) return;
         this.#t = type;
         this.#u = uid;
         this.#qs = questions.map(
@@ -24,7 +24,7 @@ export default class Settlement {
         }
 
         const r = u=>this.#ranking(u);
-        this.#rs = users.sort((a,b)=>r(a)-r(b));
+        this.#rs = Object.keys(scores).sort((a,b)=>r(a)-r(b));
         this.#r = r(uid);
         this.#ok = true;
     }
@@ -106,8 +106,8 @@ export default class Settlement {
         const u = this.#gu(r);
         const {answers} = this.#us.get(u);
         for(const answer of answers) {
-            if(!Array.isArray(answer)) continue;
-            timeout += answer[0];
+            if(Array.isArray(answer)) continue;
+            timeout ++;
         }
         return timeout;
     }

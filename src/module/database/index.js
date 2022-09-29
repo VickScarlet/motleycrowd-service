@@ -22,6 +22,7 @@ import Game from './model/Game.js';
 import Score from './model/Score.js';
 import Asset from './model/Asset.js';
 import Record from './model/Record.js';
+import Achievement from './model/Achievement.js';
 
 /**
  * 数据库模块
@@ -42,6 +43,8 @@ export default class Database extends IModule {
     #asset;
     /** @private @type {Record} */
     #record;
+    /** @private @type {Achievement} */
+    #achievement;
     /** @readonly */
     get kvdata() { return this.#kvdata; }
     /** @readonly */
@@ -56,6 +59,8 @@ export default class Database extends IModule {
     get asset() { return this.#asset; }
     /** @readonly */
     get record() { return this.#record; }
+    /** @readonly */
+    get achievement() { return this.#achievement; }
 
     /**
      * @private
@@ -107,6 +112,7 @@ export default class Database extends IModule {
            this.#score,
            this.#asset,
            this.#record,
+           this.#achievement,
         ] = await Promise.all([
             create(KVData, mc.KVData),
             create(Auth, mc.Auth),
@@ -115,6 +121,7 @@ export default class Database extends IModule {
             create(Score, mc.Score),
             create(Asset, mc.Asset),
             create(Record, mc.Record),
+            create(Achievement, mc.Achievement),
         ]);
         this.$info('initialized in', Date.now()-start, 'ms.');
     }
@@ -136,6 +143,7 @@ export default class Database extends IModule {
             case 'score': return this.#score;
             case 'asset': return this.#asset;
             case 'record': return this.#record;
+            case 'achievement': return this.#achievement;
             default: return null;
         }
     }

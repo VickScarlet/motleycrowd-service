@@ -5,14 +5,20 @@ export default class Achievement extends IModule {
 
     proxy() {
         return {
-            trigger: (uid, {achv, params}) => this.#gets(uid, achv, params),
+            trigger: {
+                ps: [
+                    {key: 'achv', type: 'string', def: null},
+                    {key: 'params', def: {}},
+                ],
+                do: (uid, achv, params) => this.trigger(uid, achv, params)
+            },
         };
     }
 
     async trigger(uid, achv, params) {
-        if(this.$db.achievement.isUnlock(uid, achv))
+        if(await this.$db.achievement.isUnlock(uid, achv))
             return [this.$err.ACHV_UNLOCKED];
-        const sheet = this.$sheet.get('archievement', achv);
+        const sheet = this.$sheet.get('achievement', achv);
         if(!sheet) return [this.$err.PARAM_ERROR];
         const {condition, reward} = sheet;
         if(!await this.#check(uid, condition, params))
