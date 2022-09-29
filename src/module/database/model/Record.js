@@ -59,6 +59,7 @@ export default class Record extends Base {
     }
 
     async get(uid, key) {
+        if(!key) return null;
         const data = await this.$.findOne(
             { uid },
             { projection: {
