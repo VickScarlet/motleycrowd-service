@@ -1,14 +1,12 @@
 import IModule from "../imodule.js";
-
-const SHEETS = [ 'achievement', 'reward' ];
 export default class Sheet extends IModule {
     /** @override */
     async initialize() {
         const start = Date.now();
         this.$info('initializing...');
-        const { load, freeze } = this.$configure;
+        const { load, freeze, sheets } = this.$configure;
         this.#freeze = !!freeze;
-        for(const name of SHEETS) {
+        for(const name of sheets) {
             const sheet = await load(name);
             if(!sheet)
                 throw new Error(`sheet [${name}] load failed!!`);
