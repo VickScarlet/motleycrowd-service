@@ -29,13 +29,14 @@ export default class Game extends Base {
      * 存档
      * @async
      * @param {number} type
+     * @param {boolean} priv
      * @param {questions} questions
      * @param {users} users
      * @param {scores} scores
      */
-    async save(type, questions, users, scores) {
+    async save(type, priv, questions, users, scores) {
         const data = {
-            id: gid(), created: new Date(),
+            id: gid(), created: new Date(), private: priv,
             type, questions, users, scores,
         };
         const ret = await this.$.insertOne(data);

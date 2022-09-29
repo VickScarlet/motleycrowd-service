@@ -279,7 +279,7 @@ export default class Game extends IModule {
         let id, created;
         if(notGuest.length > 0) {
             const result = await this.$db.game.save(
-                type, meta, [...users], settlement
+                type, priv, meta, [...users], settlement
             );
             id = result.id;
             created = result.created;
@@ -291,7 +291,8 @@ export default class Game extends IModule {
         ));
         users.forEach(uid=>{
             this.$core.send(uid, 'game.settlement', {
-                id, created,
+                id, created, type,
+                private: priv,
                 questions: meta,
                 scores: settlement,
             });
