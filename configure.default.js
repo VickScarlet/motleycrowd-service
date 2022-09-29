@@ -4,6 +4,7 @@ export function core() { return {
             .then(module=> module.default)
             .catch(_=>null),
         freeze: true,
+        sheets: [ 'achievement', 'reward' ],
     },
     database: {
         url: 'mongodb://127.0.0.1:27017',
@@ -18,6 +19,7 @@ export function core() { return {
             Score: { collection: 'score' },
             Asset: { collection: 'asset' },
             Record: { collection: 'record' },
+            Achievement: { collection: 'achievement' },
         }
     },
     session: {
