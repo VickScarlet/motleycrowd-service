@@ -199,18 +199,20 @@ export default class Core {
         const action = proxy.get(cmd);
         const ps = action.ps;
         const args = [];
+
+        const norml = (data, type, def, opt)=>{
+            if(!type) return data || def;
+            return $norml[type](data, def, opt);
+        }
         if(!ps) {
             args.push(data);
         } else if(Array.isArray(ps)) {
             for(const {key, type, def, opt} of ps) {
-                const arg = data[key];
-                const norm = $norml[type](arg, def, opt);
-                args.push(norm);
+                args.push(norml(data[key], type, def, opt));
             }
         } else {
             const {type, def, opt} = ps;
-            const norm = $norml[type](data, def, opt);
-            args.push(norm);
+            args.push(norml(data, type, def, opt));
         }
 
         return action.do(uid, ...args);
