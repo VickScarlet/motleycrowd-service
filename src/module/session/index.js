@@ -50,6 +50,7 @@ export default class Session extends IModule {
         });
         this.#server = server;
         this.#job = new CronJob(cron, () => this.#cronJob());
+        this.#job.start();
         this.$info('initialized in', Date.now()-start, 'ms.');
     }
 

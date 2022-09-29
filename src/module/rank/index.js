@@ -39,6 +39,7 @@ export default class Rank extends IModule {
         /** @type {configure} */
         const { cron } = this.$configure;
         this.#job = new CronJob(cron, () => this.#refresh());
+        this.#job.start();
         await this.#refresh();
         this.$info('initialized in', Date.now()-start, 'ms.');
     }
@@ -63,15 +64,14 @@ export default class Rank extends IModule {
                 this.#rank.set(k, d);
                 this.$debug(`refreshed [${k}]`, d.rank);
             });
-        this.#expired = this.#job
-            .nextDate()
-            .toJSDate()
-            .toISOString();
-        return Promise.allSettled([
+        const next = this.#job.nextDate();
+        this.#expired = next.toJSDate().toISOString();
+        await Promise.all([
             fn('main', 'rank'),
             fn('ten', 'rank10'),
             fn('hundred', 'rank100'),
         ]);
+        this.$info('refreshed next on', next.toISO());
     }
 
     /**
