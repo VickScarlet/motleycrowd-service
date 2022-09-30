@@ -13,7 +13,7 @@ export default class Asset extends IModule {
 
     async reward(uid, assets) {
         if(typeof assets === "string") {
-            assets = this.$sheet.get('reward', rewardId, 'rewards');
+            assets = this.$sheet.get('reward', assets, 'rewards');
         }
         if(!assets) return false;
         return this.rewardAssets(uid, assets);

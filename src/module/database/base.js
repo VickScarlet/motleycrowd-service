@@ -26,6 +26,7 @@ export default class Base {
 
     #sync = new Map();
     $sync(uid, data, isSet=false) {
+        if(data) delete data._id;
         if(isSet) {
             this.#sync.set(uid, data);
             return;
