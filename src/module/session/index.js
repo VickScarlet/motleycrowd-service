@@ -70,7 +70,6 @@ export default class Session extends IModule {
         const now = Date.now();
         for(const [uid, time] of this.#pending) {
             if(now < time) continue;
-            users.add(uid);
             this.close(uid, 3001, 'ACron');
             $emit('session.leave', uid);
         }
@@ -126,8 +125,7 @@ export default class Session extends IModule {
     #limit = new Set();
 
     async #auth(sid, guid, type, username, password, sync={}) {
-        if(this.#uid.has(sid))
-            return [guid, [0, this.#uid.get(sid)]];
+        this.#logout(sid);
         // AUTH LIMIT
         if(this.#limit.has(sid))
             return [guid, [this.$err.AUTH_LIMIT]];
@@ -177,7 +175,7 @@ export default class Session extends IModule {
 
     #logout(sid, guid) {
         const uid = this.#uid.get(sid);
-        if(uid) return [guid, [0]];
+        if(!uid) return [guid, [0]];
         this.#uid.delete(sid);
         this.#sid.delete(uid);
         const result = this.$user.logout(uid);

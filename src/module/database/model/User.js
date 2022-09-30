@@ -81,7 +81,7 @@ export default class User extends Base {
     async find(uid) {
         const data = this.#cache.get(uid);
         if(data) return $utils.clone(data);
-        return this.findOne(
+        return this.$.findOne(
             { uid },
             { projection: { _id: 0 } }
         );
@@ -102,10 +102,10 @@ export default class User extends Base {
             else notInCache.push(uid);
         }
         if(notInCache.length < 1) return result;
-        const models = await this.find(
+        const models = await this.$.find(
             { uid: { "$in": notInCache } },
             { projection: { _id: 0 } },
-        );
+        ).toArray();
         return [...result, ...models];
     }
 

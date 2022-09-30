@@ -21,6 +21,8 @@ const ErrorCode = {
     USERNAME_ERROR: 2002,
     /** @readonly 认证限制 */
     AUTH_LIMIT: 2003,
+    /** @readonly 认证限制 */
+    ALREADY_AUTH: 2004,
 
     /** @readonly 没有游戏类型 */
     NO_GAME_TYPE: 3000,
