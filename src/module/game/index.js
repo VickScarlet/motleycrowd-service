@@ -13,12 +13,10 @@
  */
 import IModule from "../imodule.js";
 import Room from "./room.js";
-import Reward from "./reward.js";
 
 export default class Game extends IModule {
     /** @private 类型配置 @type {{[type: number]: RoomConfigure}} */
     #types;
-    #rewards;
     /** @private 私人房间 @type {Map<string, Room>} */
     #privates = new Map();
     /** @private 匹配房间 @type {Set<Room>} */
@@ -44,12 +42,35 @@ export default class Game extends IModule {
 
     proxy() {
         return {
-            create: (uid, {type}) => this.create(uid, type),
-            join: (uid, {room}) => this.join(uid, room),
-            pair: (uid, {type}) => this.pair(uid, type),
-            leave: uid => this.leave(uid),
-            answer: (uid, [idx, answer]) => this.answer(uid, answer, idx),
-            history: (uid, {update}) => this.history(uid, update),
+            create: {
+                ps: [{key: 'type', type: 'number', def: 0}],
+                do: (uid, type)=>this.create(uid, type),
+            },
+            join: {
+                ps: [{key: 'room', type: 'string', def: ''}],
+                do: (uid, room)=>this.join(uid, room),
+            },
+            pair: {
+                ps: [{key: 'type', type: 'number', def: 0}],
+                do: (uid, type)=>this.pair(uid, type),
+            },
+            leave: {
+                do: uid=>this.leave(uid),
+            },
+            answer: {
+                ps: [
+                    {key: 0, type: 'number', def: 0},
+                    {key: 1, type: 'string', def: ''},
+                ],
+                do: (uid, idx, ans)=>this.answer(uid, ans, idx),
+            },
+            history: {
+                ps: [
+                    {key: 0, type: 'number', def: 0},
+                    {key: 1, type: 'number', def: 0},
+                ],
+                do: (uid, skip, limit)=>this.history(uid, skip, limit),
+            }
         };
     }
 
@@ -58,19 +79,20 @@ export default class Game extends IModule {
      * @returns {Promise<void>}
      */
     async initialize() {
+        const start = Date.now();
+        this.$info('initializing...');
         /** @type {configure} */
-        const {types, rewards} = this.$configure;
+        const {types} = this.$configure;
         this.#types = new Map(types);
-        this.#rewards = new Map(rewards.map(
-            ([type, rewards]) => [type, new Reward(rewards)]
-        ));
 
         for (const [type] of types) {
             this.#pairPending.set(type, []);
         }
-        this.$on('user.logout', uid => this.leave(uid));
-        this.$on('user.authenticated', uid => this.#resume(uid));
-        this.$on('user.pending', uid => this.#pending(uid));
+
+        $on('session.authenticate', uid => this.#resume(uid));
+        $on('session.pending', uid => this.#pending(uid));
+        $on('session.leave', uid => this.leave(uid));
+        this.$info('initialized in', Date.now()-start, 'ms.');
     }
 
     /**
@@ -106,7 +128,7 @@ export default class Game extends IModule {
             this.#leave(uid);
             return;
         }
-        this.$core.send(uid, `game.resume`, data);
+        this.$core.setAttach(uid, 'game.resume', data);
     }
 
     /**
@@ -229,14 +251,11 @@ export default class Game extends IModule {
      * @returns {Room}
      */
     #newRoom(type, metas) {
-        const { limit, pool, reward } = this.#types.get(type);
+        const { limit, pool } = this.#types.get(type);
         const questions = this.$question.pool(pool);
         const room = new Room(
             this, limit, questions,
-            ()=>this.#settlement(
-                room, type,
-                this.#rewards.get(reward)
-            ),
+            ()=>this.#settlement(room),
         );
         room.meta.type = type;
         Object.assign(room.meta, metas);
@@ -250,33 +269,59 @@ export default class Game extends IModule {
      * @param {string} type
      * @param {Reward} reward
      */
-    async #settlement(room, type, reward) {
-        const {questions, users} = room;
+    async #settlement(room) {
+        const {questions, users, meta: {type, private: priv}} = room;
         this.#clear(room);
         const settlement = questions.settlement(users);
         const meta = questions.meta;
+        this.$debug('settlement', type, priv, meta, settlement);
         const notGuest = [...users].filter(uid=>!this.$user.isGuest(uid));
         let id, created;
         if(notGuest.length > 0) {
             const result = await this.$db.game.save(
-                type, meta, [...users], settlement
+                type, priv, meta, [...users], settlement
             );
             id = result.id;
             created = result.created;
-            await Promise.allSettled(
-                notGuest.map(async uid=>{
-                    const [,,ranking] = settlement[uid];
-                    await this.$asset.reward(uid, reward.get(ranking));
-                })
-            );
         }
+        await Promise.all(notGuest.map(
+            uid=>this.#settlementUser(
+                uid, settlement[uid][2], type, priv
+            )
+        ));
         users.forEach(uid=>{
             this.$core.send(uid, 'game.settlement', {
-                id, created,
+                id, created, type,
+                private: priv,
                 questions: meta,
                 scores: settlement,
             });
         })
+    }
+
+    async #settlementUser(uid, ranking, type, priv) {
+        await this.$rank.addScore(uid, type, ranking);
+        const rewards = this.#types.get(type).reward(ranking);
+        if(rewards) await this.$asset.reward(uid, rewards);
+        // record
+        const c = {};
+        const s = {};
+        const records = {c, s};
+        if(priv) c.priv = 1;
+        else c.pair = 1;
+        if(ranking == 1) {
+            if(priv) {
+                c.privWin = 1;
+                s.privWin = true;
+            } else {
+                c[`${type}Win`] = 1;
+                s.pairWin = true;
+            }
+        } else {
+            if(priv) s.privWin = false;
+            else s.pairWin = false;
+        }
+        await this.$db.record.records(uid, records);
     }
 
     /**
@@ -312,11 +357,9 @@ export default class Game extends IModule {
         return this.$core.listSend(uids, `game.${cmd}`, data);
     }
 
-    async history(uid, update) {
-        update = new Date(update);
-        if(!update.getTime())
-            update = new Date(0);
-        const result = await this.$db.game.history(uid, update);
+    async history(uid, skip, limit) {
+        limit = Math.min(limit, 10);
+        const result = await this.$db.game.history(uid, skip, limit);
         return [0, result];
     }
 }

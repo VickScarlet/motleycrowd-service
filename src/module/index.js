@@ -19,8 +19,8 @@
  * @returns {void}
  *
  */
-import {clone} from '../functions/index.js';
 import ErrorCode from './errorcode.js';
+import Sheet from './sheet/index.js';
 import Database from './database/index.js';
 import Question from './question/index.js';
 import User from './user/index.js';
@@ -28,6 +28,7 @@ import Game from './game/index.js';
 import Rank from './rank/index.js';
 import Asset from './asset/index.js';
 import Session from './session/index.js';
+import Achievement from './achievement/index.js';
 import process from 'process';
 
 /** 核心模块 */
@@ -43,32 +44,45 @@ export default class Core {
      * @param {import('./session').configure} conf.session
      * @returns {Core}
      */
-    constructor({database, question, user, game, rank, asset, session}) {
+    constructor({name, version}, {
+        sheet, database, question, user, game,
+        rank, asset, achievement, session
+    }) {
+        $l.system.info(`${name}@${version}`);
+        this.#version = version;
+        this.#sheet = new Sheet('sheet', this, sheet);
+        this.#database = new Database('database', this, database);
+        this.#question = new Question('question', this, question);
+        this.#user = new User('user', this, user);
+        this.#game = new Game('game', this, game);
+        this.#rank = new Rank('rank', this, rank);
+        this.#asset = new Asset('asset', this, asset);
+        this.#achievement = new Achievement('achievement', this, achievement);
+        this.#session = new Session('session', this, session);
 
-        this.#database = new Database(this, database);
-        this.#question = new Question(this, question);
-        this.#user = new User(this, user);
-        this.#game = new Game(this, game);
-        this.#rank = new Rank(this, rank);
-        this.#asset = new Asset(this, asset);
-        this.#session = new Session(this, session);
-
-        process.title = 'Metley Crowd Service';
         process.on('SIGINT', async ()=>{
-            logger.info('[System] recived SIGINT');
+            $l.system.info('recived SIGINT');
             await this.shutdown();
             process.exit(0);
         });
 
         process.on('exit', ()=>{
-            logger.info('[System]', 'bye.');
+            $l.system.info('bye.');
         });
+
+        process.on('uncaughtException', err => {
+            $l.system.error(err);
+            process.exit(1);
+        });
+
+        $on('session.leave', uid=>this.#attach.delete(uid));
     }
 
-    /** @private @type {Map<string, EventSet>}*/
-    #events = new Map();
+    #version;
     /** @private @type {Map<string, ProxyMap>}*/
     #proxy = new Map();
+    /** @private 表 @type {Sheet} */
+    #sheet;
     /** @private 数据库 @type {Database} */
     #database;
     /** @private 题目 @type {Question} */
@@ -81,56 +95,33 @@ export default class Core {
     #rank;
     /** @private 资产 @type {Asset} */
     #asset;
+    /** @private 成就 @type {Achievement} */
+    #achievement;
     /** @private 会话 @type {Session} */
     #session;
 
-    /** @readonly 错误码 */
-    get $err() {return ErrorCode;}
-    /** @readonly 数据库 */
-    get database() { return this.#database; }
-    /** @readonly 题目 */
-    get question() { return this.#question; }
-    /** @readonly 用户 */
-    get user() { return this.#user; }
-    /** @readonly 游戏 */
-    get game() { return this.#game; }
-    /** @readonly 排行榜 */
-    get rank() { return this.#rank; }
-    /** @readonly 资产 */
-    get asset() { return this.#asset; }
-    /** @readonly 会话 */
-    get session() { return this.#session; }
+    #attach = new Map();
 
-    /**
-     * 监听事件
-     * @type {on}
-     */
-    on(event, callback) {
-        if(!this.#events.has(event))
-            this.#events.set(event, new Set());
-        const callbacks = this.#events.get(event);
-        callbacks.add(callback);
-    }
-    /**
-     * 取消监听
-     * @type {off}
-     */
-    off(event, callback) {
-        if(!this.#events.has(event)) return;
-        const callbacks = this.#events.get(event);
-        callbacks.delete(callback);
-    }
-    /**
-     * 发送事件
-     * @type {emit}
-     */
-    emit(event, data) {
-        if(!this.#events.has(event)) return;
-        const callbacks = this.#events.get(event);
-        callbacks.forEach(callback => {
-            callback(data);
-        });
-    }
+    /** @readonly */
+    get $err() {return ErrorCode;}
+    /** @readonly */
+    get sheet() { return this.#sheet; }
+    /** @readonly */
+    get database() { return this.#database; }
+    /** @readonly */
+    get question() { return this.#question; }
+    /** @readonly */
+    get user() { return this.#user; }
+    /** @readonly */
+    get game() { return this.#game; }
+    /** @readonly */
+    get rank() { return this.#rank; }
+    /** @readonly */
+    get asset() { return this.#asset; }
+    /** @readonly */
+    get achievement() { return this.#achievement; }
+    /** @readonly */
+    get session() { return this.#session; }
 
     /**
      * 设置代理
@@ -154,8 +145,9 @@ export default class Core {
      * @returns {Promise<void>}
      */
     async initialize() {
-        logger.info('[System]', 'initializing...');
+        $l.system.info('initializing...');
         const start = Date.now();
+        await this.#sheet.initialize();
         await this.#database.initialize();
         await this.#question.initialize();
         await this.#user.initialize();
@@ -166,7 +158,8 @@ export default class Core {
         this.#setProxy('user', this.#user.proxy());
         this.#setProxy('game', this.#game.proxy());
         this.#setProxy('rank', this.#rank.proxy());
-        logger.info('[System]', 'initializeed in', Date.now() - start, 'ms.');
+        this.#setProxy('achv', this.#achievement.proxy());
+        $l.system.info('initializeed in', Date.now() - start, 'ms.');
     }
 
     /**
@@ -175,15 +168,17 @@ export default class Core {
      * @returns {Promise<void>}
      */
     async shutdown() {
-        logger.info('[System]', 'shutdowning...');
+        $l.system.info('shutdowning...');
         await this.#session.shutdown();
+        await this.#achievement.shutdown();
         await this.#asset.shutdown();
         await this.#rank.shutdown();
         await this.#game.shutdown();
         await this.#user.shutdown();
         await this.#question.shutdown();
         await this.#database.shutdown();
-        logger.info('[System]', 'shutdowned.');
+        await this.#sheet.shutdown();
+        $l.system.info('shutdowned.');
         return true;
     }
 
@@ -195,12 +190,32 @@ export default class Core {
      * @returns {Promise<CommandResult>}
      */
     async useraction(uid, {command, data}) {
+        $l.system.debug('useraction', uid, command, data);
         if(!command) return [this.$err.NO_CMD];
         const [p, cmd] = command.split(".");
         const proxy = this.#proxy.get(p);
         if(!proxy || !proxy.has(cmd))
             return [this.$err.NO_CMD];
-        return proxy.get(cmd)(uid, data);
+        const action = proxy.get(cmd);
+        const ps = action.ps;
+        const args = [];
+
+        const norml = (data, type, def, opt)=>{
+            if(!type) return data || def;
+            return $norml[type](data, def, opt);
+        }
+        if(!ps) {
+            args.push(data);
+        } else if(Array.isArray(ps)) {
+            for(const {key, type, def, opt} of ps) {
+                args.push(norml(data[key], type, def, opt));
+            }
+        } else {
+            const {type, def, opt} = ps;
+            args.push(norml(data, type, def, opt));
+        }
+
+        return action.do(uid, ...args);
     }
 
     /**
@@ -229,17 +244,19 @@ export default class Core {
     /** 基本信息 */
     baseinfo() {
         if(this.#i) return this.#i;
-        const info = { version: '0.0.1' };
+        const info = { version: this.#version };
 
         info.session = this.#session.$i;
+        info.achievement = this.#achievement.$i;
         info.asset = this.#asset.$i;
         info.rank = this.#rank.$i;
         info.game = this.#game.$i;
         info.user = this.#user.$i;
         info.question = this.#question.$i;
         info.database = this.#database.$i;
+        info.sheet = this.#sheet.$i;
 
-        this.#i = clone(info);
+        this.#i = $utils.clone(info);
         return info;
     }
 
@@ -252,5 +269,20 @@ export default class Core {
             session: this.#session.state,
             game: this.#game.state,
         };
+    }
+
+    setAttach(uid, key, value) {
+        if(!this.#attach.has(uid))
+            this.#attach.set(uid, {});
+        this.#attach.get(uid)[key] = value;
+    }
+
+    getAttach(uid) {
+        const sync = this.#database.sync(uid);
+        if(sync) this.setAttach(uid, 'sync', sync);
+        const attach = this.#attach.get(uid);
+        this.#attach.delete(uid);
+        if(!attach) return null;
+        return [uid, attach];
     }
 }

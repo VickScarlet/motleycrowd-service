@@ -7,10 +7,13 @@ export default class IModule {
      * @param {Object<string, any>} configure
      * @returns {IModule}
      */
-    constructor(core, configure = {}) {
+    constructor(name, core, configure = {}) {
+        this.#name = name;
         this.#$core = core;
         this.#$configure = configure;
     }
+
+    #name = 'IModule';
 
     /** @private*/
     #$core;
@@ -22,20 +25,16 @@ export default class IModule {
      * @abstract
      */
     get state() { return null; }
-    /** @readonly 错误码 */
+    /** @readonly */
     get $err() {return ErrorCode;}
     /** @readonly */
     get $core() { return this.#$core; }
-    /** @readonly 配置 */
+    /** @readonly */
     get $configure() { return this.#$configure; }
-    /** @readonly @type {import('.').on} */
-    get $on() { return this.#$core.on.bind(this.#$core); }
-    /** @readonly @type {import('.').off} */
-    get $off() { return this.#$core.off.bind(this.#$core); }
-    /** @readonly @type {import('.').emit} */
-    get $emit() { return this.#$core.emit.bind(this.#$core); }
     /** @readonly */
     get $db() { return this.#$core.database; }
+    /** @readonly */
+    get $sheet() { return this.#$core.sheet; }
     /** @readonly */
     get $user() { return this.#$core.user; }
     /** @readonly */
@@ -49,6 +48,16 @@ export default class IModule {
     /** @readonly */
     get $asset() { return this.#$core.asset; }
 
+    get #logger() { return $Log4js.getLogger(this.#name); }
+    $trace(...args) { this.#logger.trace(...args); }
+    $log(...args) { this.#logger.log(...args); }
+    $debug(...args) { this.#logger.debug(...args); }
+    $info(...args) { this.#logger.info(...args); }
+    $warn(...args) { this.#logger.warn(...args); }
+    $error(...args) { this.#logger.error(...args); }
+    $fatal(...args) { this.#logger.fatal(...args); }
+    $mark(...args) { this.#logger.mark(...args); }
+
     /**
      * 初始化
      * @async
@@ -56,7 +65,7 @@ export default class IModule {
      * @returns {Promise<void>}
      */
     async initialize() {
-        // empty
+        this.$debug('module not implemented initialize()');
     }
 
     /**
@@ -66,7 +75,7 @@ export default class IModule {
      * @returns {Promise<void>}
      */
     async shutdown() {
-        // empty
+        this.$debug('module not implemented shutdown()');
     }
 
     /**

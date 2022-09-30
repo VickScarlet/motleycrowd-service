@@ -1,5 +1,4 @@
 import Base from '../base.js';
-import { clone } from '../../../functions/index.js';
 
 /**
  * @typedef {Object} userdata
@@ -81,8 +80,8 @@ export default class User extends Base {
      */
     async find(uid) {
         const data = this.#cache.get(uid);
-        if(data) return clone(data);
-        return this.findOne(
+        if(data) return $utils.clone(data);
+        return this.$.findOne(
             { uid },
             { projection: { _id: 0 } }
         );
@@ -99,14 +98,14 @@ export default class User extends Base {
         const result = [];
         for (const uid of uids) {
             const data = this.#cache.get(uid);
-            if(data) result.push(clone(data));
+            if(data) result.push($utils.clone(data));
             else notInCache.push(uid);
         }
         if(notInCache.length < 1) return result;
-        const models = await this.find(
+        const models = await this.$.find(
             { uid: { "$in": notInCache } },
             { projection: { _id: 0 } },
-        );
+        ).toArray();
         return [...result, ...models];
     }
 
@@ -118,7 +117,7 @@ export default class User extends Base {
      */
     async setMeta(uid, meta) {
         const update = {
-            $set: this.$flat({
+            $set: $utils.flat({
                 meta, updated: new Date()
             }, 1)
         };

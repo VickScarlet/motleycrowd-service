@@ -19,7 +19,10 @@ export default class User extends IModule {
 
     proxy() {
         return {
-            get: (_, uids) => this.#get(uids),
+            get: {
+                ps: {type: 'strArray', def: null},
+                do: (_, uids) => this.#get(uids),
+            }
         };
     }
 
@@ -28,9 +31,13 @@ export default class User extends IModule {
      * @returns {Promise<void>}
      */
     async initialize() {
+        const start = Date.now();
+        this.$info('initializing...');
         /** @type {configure} */
         this.#registerCount = await this.$db.kvdata.get('register') || 0;
-        this.$on('session.leave', uid => this.logout(uid));
+        this.$info('total register user count', this.#registerCount);
+        $on('session.leave', uid => this.logout(uid));
+        this.$info('initialized in', Date.now()-start, 'ms.');
     }
 
     /**
@@ -53,7 +60,8 @@ export default class User extends IModule {
         const {uid, banned} = ret;
         if(banned) return [-1];
         await this.$db.user.cache(uid);
-        this.$emit('user.authenticated', uid);
+        $emit('user.authenticated', uid);
+        this.$debug('auth', uid);
         return [0, uid];
     }
 
@@ -81,6 +89,7 @@ export default class User extends IModule {
         if(!success) return [1];
         await this.$db.kvdata.set('register', ++this.#registerCount);
         await this.$db.user.create(uid, username);
+        this.$debug('regs', uid, username);
         return [0, uid];
     }
 
@@ -109,7 +118,7 @@ export default class User extends IModule {
      * 是否为游客
      * @param {uid} uid
      */
-     isGuest(uid) {
+    isGuest(uid) {
         return uid[0] == '#';
     }
 
@@ -120,7 +129,7 @@ export default class User extends IModule {
      * @returns {CommandResult}
      */
     logout(uid) {
-        this.$emit('user.logout', uid);
+        $emit('user.logout', uid);
         this.$db.user.release(uid);
         return [0];
     }

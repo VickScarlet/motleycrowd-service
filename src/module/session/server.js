@@ -26,7 +26,7 @@ export default class Server {
             .on('connection', (ws, req) => {
                 const ip = req.headers['x-forwarded-for'];
                 if(this.#bannedip.has(ip)) {
-                    ws.close(3003, "banned");
+                    ws.close(3002);
                     return;
                 }
                 const sid = uuidGenerator();
@@ -66,6 +66,7 @@ export default class Server {
     }
 
     async sclose() {
+        clearInterval(this.#interval);
         if(!this.#wss) return;
         return new Promise((resolve, reject) => {
             this.#wss.removeAllListeners();
@@ -82,6 +83,8 @@ export default class Server {
         const socket = this.#ss.get(sid);
         if(!socket) return;
         const banned = socket.ip;
+        socket.close(3003);
+        this.#ss.delete(sid);
         this.#bannedip.set(banned, Date.now() + TICK);
         this.#ss.forEach((s, i) => {
             if(s.ip === banned) {
@@ -150,7 +153,7 @@ class Socket {
      * @param {string|undefined} reason
      * @returns {Promise<void>}
      */
-    close(code=3000, reason='') {
+    close(code, reason) {
         this.#ws.close(code, reason);
     }
 }

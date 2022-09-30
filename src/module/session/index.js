@@ -40,6 +40,8 @@ export default class Session extends IModule {
      * @returns {Promise<void>}
      */
     async initialize() {
+        const start = Date.now();
+        this.$info('initializing...');
         /** @type {configure} */
         const {host, port, cron, hold} = this.$configure;
         const server = new Server(host, port, {
@@ -48,6 +50,8 @@ export default class Session extends IModule {
         });
         this.#server = server;
         this.#job = new CronJob(cron, () => this.#cronJob());
+        this.#job.start();
+        this.$info('initialized in', Date.now()-start, 'ms.');
     }
 
     /**
@@ -55,24 +59,26 @@ export default class Session extends IModule {
      * @returns {Promise<void>}
      */
     async shutdown() {
-        if(!this.#server) return;
+        this.$info('shutdowning...');
         this.#job.stop();
-        return this.#server.sclose();
+        if(this.#server)
+            await this.#server.sclose();
+        this.$info('shutdowned.');
     }
 
     #cronJob() {
         const now = Date.now();
         for(const [uid, time] of this.#pending) {
             if(now < time) continue;
-            users.add(uid);
             this.close(uid, 3001, 'ACron');
-            this.$emit('session.leave', uid);
+            $emit('session.leave', uid);
         }
     }
 
     #close(sid, hold) {
         const uid = this.#uid.get(sid);
         if(!uid) return;
+        $emit('session.pending', uid);
         this.#pending.set(uid, Date.now() + hold);
     }
 
@@ -105,6 +111,7 @@ export default class Session extends IModule {
     #resume(sid, guid, csid, cuid) {
         const suid = this.#uid.get(csid);
         if(cuid != suid) return [guid, false, sid];
+        $emit('session.resume', suid);
         return [guid, true, sid];
     }
 
@@ -118,27 +125,34 @@ export default class Session extends IModule {
     #limit = new Set();
 
     async #auth(sid, guid, type, username, password, sync={}) {
+        this.#logout(sid);
         // AUTH LIMIT
-        if(this.#limit.has(sid)) return [this.$err.AUTH_LIMIT];
+        if(this.#limit.has(sid))
+            return [guid, [this.$err.AUTH_LIMIT]];
         this.#limit.add(sid);
         setTimeout(() => this.#limit.delete(sid), 5000);
         // AUTH LIMIT
-
         let result;
         let gsync = false;
+        let emit;
+        username = $norml.string(username, '');
+        password = $norml.string(password, '');
         switch(type) {
             case this.#AUTH_REGISTER:
                 result = await this.$user.register(username, password);
+                emit = 'session.register';
                 break;
             case this.#AUTH_LOGIN:
                 result = await this.$user.authenticate(username, password);
+                emit = 'session.authenticate';
                 gsync = true;
                 break;
             case this.#AUTH_GUEST:
                 result = this.$user.guest();
+                emit = 'session.guest';
                 break;
             default:
-                return [guid, this.$err.PARAM_ERROR];
+                return [guid, [this.$err.PARAM_ERROR]];
         }
         const [code, uid] = result;
         if(code == -1) {
@@ -149,6 +163,7 @@ export default class Session extends IModule {
             this.close(uid, 3001, 'AAuth');
             this.#uid.set(sid, uid);
             this.#sid.set(uid, sid);
+            $emit(emit, uid);
             if(gsync) {
                 if(!sync || sync.uid !== uid) sync = null;
                 else sync = sync.sync;
@@ -160,7 +175,7 @@ export default class Session extends IModule {
 
     #logout(sid, guid) {
         const uid = this.#uid.get(sid);
-        if(uid) return [guid, [0]];
+        if(!uid) return [guid, [0]];
         this.#uid.delete(sid);
         this.#sid.delete(uid);
         const result = this.$user.logout(uid);
@@ -176,8 +191,8 @@ export default class Session extends IModule {
 
     async #send(sid, datas) {
         const uid = this.#uid.get(sid);
-        const sync = this.$db.sync(uid);
-        if(sync) datas.push(sync);
+        const attach = this.$core.getAttach(uid);
+        if(attach) datas.push(attach);
         datas.push(this.online);
         this.#server.send(sid, datas);
     }

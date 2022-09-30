@@ -29,13 +29,14 @@ export default class Game extends Base {
      * 存档
      * @async
      * @param {number} type
+     * @param {boolean} priv
      * @param {questions} questions
      * @param {users} users
      * @param {scores} scores
      */
-    async save(type, questions, users, scores) {
+    async save(type, priv, questions, users, scores) {
         const data = {
-            id: gid(), created: new Date(),
+            id: gid(), created: new Date(), private: priv,
             type, questions, users, scores,
         };
         const ret = await this.$.insertOne(data);
@@ -50,7 +51,7 @@ export default class Game extends Base {
      * 查档
      * @async
      * @param {string} id
-     * @return {gamedata|null}
+     * @return {Promise<gamedata|null>}
      */
     async get(id) {
         return this.$.findOne(
@@ -63,17 +64,18 @@ export default class Game extends Base {
      * 用户档案id列表
      * @async
      * @param {string} uid
-     * @return {{id: number,  created: Date}[]}
+     * @return {Promise<{id: number, created: Date}[]>}
      */
-    async history(uid, update) {
-        return this.$.find(
-            { users: uid, created: {
-                $gt: update
-            } },
-            { projection: {
+    async history(uid, skip=0, limit=1) {
+        return this.$.find({
+            users: uid,
+            created: { $gt: update },
+        }, {
+            projection: {
                 id: 1, created: 1,
                 [`scores.${uid}`]: 1
-            } }
-        ).toArray();
+            },
+            skip, limit,
+        }).toArray();
     }
 }

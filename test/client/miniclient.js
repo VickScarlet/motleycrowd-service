@@ -61,7 +61,11 @@ class Session {
                 };
                 ws.send(JSON.stringify(first));
             });
-            ws.addEventListener('error', e => reject(e));
+            ws.addEventListener('error', e => {
+                ws.removeAllListeners();
+                ws.close();
+                reject(e);
+            });
             ws.addEventListener('message', async ({data}) => {
                 try {
                     data = JSON.parse(data);
