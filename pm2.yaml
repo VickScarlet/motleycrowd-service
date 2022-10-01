@@ -2,6 +2,7 @@ apps:
   - name: motleycrowd-service
     script: pnpm start
     watch: true
+    cwd: ./
     env:
       NODE_ENV: development
     env_production:
