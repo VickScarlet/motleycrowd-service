@@ -46,7 +46,11 @@ export default class Session extends IModule {
         const {host, port, cron, hold} = this.$configure;
         const server = new Server(host, port, {
             close: s => this.#close(s, hold),
-            message: (s, m) => this.#dispatch(s, m),
+            message: (s, m) => this.#dispatch(s, m)
+                .catch(reason => {
+                    this.$error(s, m, reason);
+                    this.$core.shutdown();
+                }),
         });
         this.#server = server;
         this.#job = new CronJob(cron, () => this.#cronJob());

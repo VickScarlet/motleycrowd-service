@@ -72,7 +72,7 @@ export default class Core {
 
         process.on('uncaughtException', err => {
             $l.system.error(err);
-            process.exit(1);
+            this.shutdown();
         });
 
         $on('session.leave', uid=>this.#attach.delete(uid));
