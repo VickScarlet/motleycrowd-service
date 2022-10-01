@@ -142,6 +142,7 @@ export default class User extends Base {
             );
         }
         if(!data) return;
+        delete data._id;
         if(data.updated>update) {
             this.$sync(uid, [data], true);
         } else {

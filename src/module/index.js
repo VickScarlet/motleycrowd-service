@@ -70,9 +70,10 @@ export default class Core {
             $l.system.info('bye.');
         });
 
-        process.on('uncaughtException', err => {
+        process.on('uncaughtException', async err => {
             $l.system.error(err);
-            this.shutdown();
+            await this.shutdown();
+            process.exit(1);
         });
 
         $on('session.leave', uid=>this.#attach.delete(uid));

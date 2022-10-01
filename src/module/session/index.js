@@ -46,11 +46,7 @@ export default class Session extends IModule {
         const {host, port, cron, hold} = this.$configure;
         const server = new Server(host, port, {
             close: s => this.#close(s, hold),
-            message: (s, m) => this.#dispatch(s, m)
-                .catch(reason => {
-                    this.$error(s, m, reason);
-                    this.$core.shutdown();
-                }),
+            message: (s, m) => this.#dispatch(s, m),
         });
         this.#server = server;
         this.#job = new CronJob(cron, () => this.#cronJob());
@@ -104,8 +100,16 @@ export default class Session extends IModule {
             default:
                 fn = this.#action; break;
         }
-        const result = await fn.call(this, sid, guid, ...receive);
-        if(result) this.#send(sid, result);
+        try {
+            const result = await fn.call(this, sid, guid, ...receive);
+            if(result)
+                await this.#send(sid, result);
+        } catch (reason) {
+            this.$error(
+                this.#uid.get(sid),
+                guid, receive, reason
+            )
+        }
     }
 
     #connect(sid, guid) {
@@ -198,7 +202,7 @@ export default class Session extends IModule {
         const attach = this.$core.getAttach(uid);
         if(attach) datas.push(attach);
         datas.push(this.online);
-        this.#server.send(sid, datas);
+        await this.#server.send(sid, datas);
     }
 
     /**

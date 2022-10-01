@@ -59,6 +59,7 @@ export default class Base {
             {uid}, {projection: {_id: 0, password: 0}}
         );
         if(!data) return;
+        delete data._id;
         if(data.updated>update) {
             this.$sync(uid, [data], true);
         } else {

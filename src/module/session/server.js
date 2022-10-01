@@ -129,9 +129,14 @@ class Socket {
      * @returns {Promise<string|Buffer>}
      */
     async #packet(data) {
-        const serializeData = JSON.stringify(data);
-        if(serializeData.length < 1024) return serializeData;
-        return gzipSync(serializeData);
+        try {
+            const serializeData = JSON.stringify(data);
+            if(serializeData.length < 1024) return serializeData;
+            return gzipSync(serializeData);
+        } catch (e) {
+            $l.socket.error(data);
+            throw e;
+        }
     }
 
     /**
