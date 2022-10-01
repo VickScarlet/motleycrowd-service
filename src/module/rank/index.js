@@ -93,7 +93,7 @@ export default class Rank extends IModule {
      * @returns {CommandResult}
      */
     #ranking(uid) {
-        return [0, this.user(uid)];
+        return [0, [this.user(uid), this.#expired]];
     }
 
     user(uid) {
@@ -107,8 +107,7 @@ export default class Rank extends IModule {
             ranking.ten = [ten.get(uid), ten.size];
         if(hundred.has(uid))
             ranking.hundred = [hundred.get(uid), hundred.size];
-        if(!Object.keys(ranking).length) return null;
-        return [ranking, this.#expired]
+        return ranking;
     }
 
     /**
