@@ -116,13 +116,10 @@ export default class User extends Base {
      * @param {Object<string, any>} meta
      */
     async setMeta(uid, meta) {
-        const update = {
-            $set: $utils.flat({
-                meta, updated: new Date()
-            }, 1)
-        };
+        const $set = $utils.flat({meta}, 1);
+        $set.updated = new Date();
         const ret = await this.$.findOneAndUpdate(
-            { uid }, update, {
+            { uid }, { $set }, {
                 returnDocument: 'after',
                 projection: { _id: 0 },
             }

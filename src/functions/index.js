@@ -170,6 +170,7 @@ export function flat(obj, depth=Infinity, flatArray=false) {
         if( d <= 0
             || typeof o !== 'object'
             || Array.isArray(o) && !flatArray
+            || o instanceof Date
         ) return [o, false];
 
         const r = {};

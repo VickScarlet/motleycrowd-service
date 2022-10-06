@@ -22,6 +22,13 @@ export default class User extends IModule {
             get: {
                 ps: {type: 'strArray', def: null},
                 do: (_, uids) => this.#get(uids),
+            },
+            accessory: {
+                ps: [
+                    {key: 'card', type: 'string', def: null},
+                    {key: 'badge', type: 'string', def: null},
+                ],
+                do: (uid, card, badge) => this.#accessory(uid, card, badge),
             }
         };
     }
@@ -154,5 +161,21 @@ export default class User extends IModule {
             datas[uid] = meta;
         }
         return [0, datas];
+    }
+
+    async #accessory(uid, card, badge) {
+        if(!card && !badge)
+            return [this.$err.PARAM_ERROR];
+        const asset = {};
+        if(card) asset.card = {[card]: 1};
+        if(badge) asset.badge = {[badge]: 1};
+        const check = await this.$asset.check(uid, asset);
+        if(!check) return [this.$err.ASSET_NOT_ENOUTH];
+        const meta = {};
+        if(card) meta.card = card;
+        if(badge) meta.badge = badge;
+        const result = await this.$db.user.setMeta(uid, meta);
+        if(!result) return [this.$err.DATABASE_ERROR];
+        return [0];
     }
 }

@@ -31,6 +31,9 @@ const ErrorCode = {
 
     /** @readonly 已经解锁了成就 */
     ACHV_UNLOCKED: 4000,
+
+    /** @readonly 资产不足 */
+    ASSET_NOT_ENOUTH: 5000,
 };
 
 export default ErrorCode;
