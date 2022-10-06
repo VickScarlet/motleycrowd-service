@@ -65,6 +65,16 @@ export default class Achievement extends IModule {
                 t = new Settlement(t, uid);
                 get = (...args)=>t.get(...args);
                 break;
+            case 'asset':
+                t = await this.$db.asset.gets(uid);
+                get = (x, k ,...args)=>{
+                    if(x=='count') {
+                        if(!t?.[k]) return 0;
+                        return Object.keys(t[k]).length;
+                    }
+                    return this.#deep(t, x, k, ...args);
+                }
+                break;
             case 'record':
                 t = await this.$db.record.gets(uid);
                 get = (...args)=>this.#deep(t, ...args);

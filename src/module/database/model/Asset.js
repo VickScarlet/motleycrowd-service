@@ -62,4 +62,13 @@ export default class Asset extends Base {
         const count = await this.$.countDocuments(check);
         return count > 0;
     }
+
+    async gets(uid) {
+        const data = await this.$.findOne(
+            { uid },
+            { projection: { _id: 0 } }
+        );
+        if(!data) return null;
+        return data.assets;
+    }
 }
