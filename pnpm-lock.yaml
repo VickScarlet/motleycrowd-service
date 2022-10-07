@@ -7,7 +7,7 @@ specifiers:
   mocha: ^10.0.0
   mongodb: ^4.10.0
   uuid: ^8.3.2
-  v-transform: ^2.0.0
+  v-transform: ^2.0.1
   ws: ^8.9.0
 
 dependencies:
@@ -20,7 +20,7 @@ dependencies:
 devDependencies:
   eslint: 8.24.0
   mocha: 10.0.0
-  v-transform: 2.0.0
+  v-transform: 2.0.1
 
 packages:
 
@@ -1239,8 +1239,8 @@ packages:
     hasBin: true
     dev: false
 
-  /v-transform/2.0.0:
-    resolution: {integrity: sha512-Ru3TVYhtoUDIQZUpBURP9ui6TzS+POaA7T5SBOYmXQxQHc7bnAZUn2vz5POIDFkamnVkCpaZBnUbIcaU28wmGw==}
+  /v-transform/2.0.1:
+    resolution: {integrity: sha512-BgySbF1Ax44IclYppRdrznLRqx437ICF+OSc8afzjdA4UAV1sufeROdT+Uj02k0J0g4AtEbOTisFAXdBEiKlng==}
     hasBin: true
     dependencies:
       commander: 8.3.0

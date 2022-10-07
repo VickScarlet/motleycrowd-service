@@ -26,6 +26,6 @@
   "devDependencies": {
     "eslint": "^8.24.0",
     "mocha": "^10.0.0",
-    "v-transform": "^2.0.0"
+    "v-transform": "^2.0.1"
   }
 }
