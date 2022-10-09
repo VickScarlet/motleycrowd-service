@@ -28,6 +28,8 @@ const ErrorCode = {
     NO_GAME_TYPE: 3000,
     /** @readonly 已经在游戏中了 */
     GAME_IN_ROOM: 3001,
+    /** @readonly 没找到游戏记录 */
+    GAME_NOT_FOUND: 3002,
 
     /** @readonly 已经解锁了成就 */
     ACHV_UNLOCKED: 4000,

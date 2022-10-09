@@ -67,13 +67,13 @@ export default class Game extends Base {
      * @return {Promise<{id: number, created: Date}[]>}
      */
     async history(uid, skip=0, limit=1) {
-        return this.$.find({
-            users: uid,
-            created: { $gt: update },
-        }, {
-            projection: {
-                id: 1, created: 1,
-                [`scores.${uid}`]: 1
+        const array = `$scores.${uid}`;
+        return this.$.find({users: uid}, {
+            sort: {created: 1},
+            projection: { _id: 0,
+                id: 1, created: 1, private: 1, type: 1,
+                score: { $arrayElemAt: [array, 0] },
+                ranking: { $arrayElemAt: [array, 2] },
             },
             skip, limit,
         }).toArray();

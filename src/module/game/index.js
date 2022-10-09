@@ -70,6 +70,10 @@ export default class Game extends IModule {
                     {key: 1, type: 'number', def: 0},
                 ],
                 do: (uid, skip, limit)=>this.history(uid, skip, limit),
+            },
+            get: {
+                ps: {type: 'string', def: ''},
+                do: (uid, id)=>this.get(uid, id),
             }
         };
     }
@@ -360,6 +364,14 @@ export default class Game extends IModule {
     async history(uid, skip, limit) {
         limit = Math.min(limit, 10);
         const result = await this.$db.game.history(uid, skip, limit);
+        return [0, result];
+    }
+
+    async get(uid, id) {
+        const result = await this.$db.game.get(id);
+        if(!result || !result.users.includes(uid))
+            return [this.$err.GAME_NOT_FOUND];
+        delete result.users;
         return [0, result];
     }
 }
