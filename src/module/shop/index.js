@@ -83,10 +83,14 @@ export default class Shop extends IModule {
         if(!goods[type] || !goods[type][idx]
             || goods[type][idx].good != good
         ) return [this.$err.PARAM_ERROR];
-        const {price, rewards} = goods[type][idx];
+        const {price, rewards, discount} = goods[type][idx];
         if(!await this.$asset.consume(uid, price))
             return [this.$err.ASSET_NOT_ENOUTH];
         await this.$asset.reward(uid, rewards);
+        if(discount < 1)
+            await this.$db.record.records(
+                uid, { c: { discount: 1 } }
+            );
         return [0];
     }
 
