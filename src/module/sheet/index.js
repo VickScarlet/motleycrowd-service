@@ -38,12 +38,9 @@ export default class Sheet extends IModule {
         return this.#freeze? data: $utils.clone(data);
     }
 
-    keys(sheet) {
-        let data = this.#sheets.get(sheet);
-        if(!data) {
-            this.$warn(`sheet [${sheet}] not found.`);
-            return null;
-        }
+    keys(sheet, ...keys) {
+        const data = this.#get(sheet, ...keys);
+        if(!data) return null;
         return Object.keys(data);
     }
 }

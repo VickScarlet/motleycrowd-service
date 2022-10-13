@@ -10,6 +10,8 @@
  *          Game: ModelConfigure,
  *          Score: ModelConfigure,
  *          Asset: ModelConfigure,
+ *          Record: ModelConfigure,
+ *          Achievement: ModelConfigure,
  *      }
  * }} configure
  */

@@ -1,3 +1,4 @@
+import yaml from 'js-yaml';
 import { readFile } from 'fs/promises';
 import * as utils from './functions/index.js';
 import * as logic from './functions/logic.js';
@@ -49,6 +50,8 @@ async function initCore(configure) {
 
 export async function start(cfgList) {
     global.$ = {};
+    global.$.yaml =
+    global.$yaml = yaml;
     global.$.utils =
     global.$u =
     global.$utils = utils;

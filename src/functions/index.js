@@ -188,6 +188,22 @@ export function flat(obj, depth=Infinity, flatArray=false) {
     return flat(obj, depth+1)[0];
 }
 
+export function buildFromFlat(flatted) {
+    const obj = {};
+    for(const key in flatted) {
+        const value = flatted[key];
+        const keys = key.split('.');
+        const last = keys.pop();
+        let o = obj;
+        for(const k of keys) {
+            if(!o[k]) o[k] = {};
+            o = o[k];
+        }
+        o[last] = value;
+    }
+    return obj;
+}
+
 export function format(str, values, ...args) {
     if(!str || values==null && !args.length)
         return str;

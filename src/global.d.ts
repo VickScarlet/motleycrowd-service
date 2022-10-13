@@ -1,3 +1,4 @@
+import yaml from 'js-yaml';
 import * as iutils from './functions/index.js';
 import * as ilogic from './functions/logic.js';
 import * as inormalize from './functions/normalize.js';
@@ -7,6 +8,7 @@ import Core from './module/index.js';
 
 let category: string;
 declare global {
+    let $yaml = yaml;
     let $utils = iutils;
     let $u = iutils;
     let $logic = ilogic;
@@ -25,6 +27,7 @@ declare global {
     });
     let $l = $logger;
     let $ = {
+        yaml: $yaml,
         utils: $utils,
         logic: $logic,
         normalize: $normalize,

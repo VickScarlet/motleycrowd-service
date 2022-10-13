@@ -4,7 +4,7 @@ export function core() { return {
             .then(module=> module.default)
             .catch(_=>null),
         freeze: true,
-        sheets: [ 'achievement', 'reward' ],
+        sheets: [ 'achievement', 'reward', 'goods' ],
     },
     database: {
         url: 'mongodb://127.0.0.1:27017',
@@ -38,6 +38,19 @@ export function core() { return {
     rank: { cron: '0 0 */1 * * *' },
     question: {},
     user: {},
+    shop: {
+        cron: '0 0 6,18 * * *',
+        sheleves: {
+            badge: {
+                count: 4,
+                discounts: [0.7],
+            },
+            card: {
+                count: 4,
+                discounts: [0.7],
+            }
+        }
+    },
 } }
 
 export function log4js() { return {

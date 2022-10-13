@@ -29,6 +29,7 @@ import Rank from './rank/index.js';
 import Asset from './asset/index.js';
 import Session from './session/index.js';
 import Achievement from './achievement/index.js';
+import Shop from './shop/index.js';
 import process from 'process';
 
 /** 核心模块 */
@@ -46,7 +47,7 @@ export default class Core {
      */
     constructor({name, version}, {
         sheet, database, question, user, game,
-        rank, asset, achievement, session
+        rank, asset, achievement, session, shop,
     }) {
         $l.system.info(`${name}@${version}`);
         this.#version = version;
@@ -58,6 +59,7 @@ export default class Core {
         this.#rank = new Rank('rank', this, rank);
         this.#asset = new Asset('asset', this, asset);
         this.#achievement = new Achievement('achievement', this, achievement);
+        this.#shop = new Shop('shop', this, shop);
         this.#session = new Session('session', this, session);
 
         process.on('SIGINT', async ()=>{
@@ -98,6 +100,8 @@ export default class Core {
     #asset;
     /** @private 成就 @type {Achievement} */
     #achievement;
+    /** @private 商店 @type {Shop} */
+    #shop;
     /** @private 会话 @type {Session} */
     #session;
 
@@ -121,6 +125,8 @@ export default class Core {
     get asset() { return this.#asset; }
     /** @readonly */
     get achievement() { return this.#achievement; }
+    /** @readonly */
+    get shop() { return this.#shop; }
     /** @readonly */
     get session() { return this.#session; }
 
@@ -155,11 +161,14 @@ export default class Core {
         await this.#game.initialize();
         await this.#rank.initialize();
         await this.#asset.initialize();
+        await this.#achievement.initialize();
+        await this.#shop.initialize();
         await this.#session.initialize();
         this.#setProxy('user', this.#user.proxy());
         this.#setProxy('game', this.#game.proxy());
         this.#setProxy('rank', this.#rank.proxy());
         this.#setProxy('achv', this.#achievement.proxy());
+        this.#setProxy('shop', this.#shop.proxy());
         $l.system.info('initializeed in', Date.now() - start, 'ms.');
     }
 
@@ -171,6 +180,7 @@ export default class Core {
     async shutdown() {
         $l.system.info('shutdowning...');
         await this.#session.shutdown();
+        await this.#shop.shutdown();
         await this.#achievement.shutdown();
         await this.#asset.shutdown();
         await this.#rank.shutdown();
@@ -248,6 +258,7 @@ export default class Core {
         const info = { version: this.#version };
 
         info.session = this.#session.$i;
+        info.shop = this.#shop.$i;
         info.achievement = this.#achievement.$i;
         info.asset = this.#asset.$i;
         info.rank = this.#rank.$i;

@@ -47,6 +47,10 @@ export default class IModule {
     get $rank() { return this.#$core.rank; }
     /** @readonly */
     get $asset() { return this.#$core.asset; }
+    /** @readonly */
+    get $achiv() { return this.#$core.achievement; }
+    /** @readonly */
+    get $shop() { return this.#$core.shop; }
 
     get #logger() { return $Log4js.getLogger(this.#name); }
     $trace(...args) { this.#logger.trace(...args); }
