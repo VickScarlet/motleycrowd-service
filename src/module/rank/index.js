@@ -59,7 +59,10 @@ export default class Rank extends IModule {
     async #refresh() {
         const fn = (k, g) => this.$db.score[g]()
             .then(r=>r.map(({uid, rank})=>([uid, rank])))
-            .then(r=>({rank: r.slice(0, 100),user: new Map(r)}))
+            .then(r=>({
+                rank: r.filter(([,rank])=>rank<101),
+                user: new Map(r)
+            }))
             .then(d=>{
                 this.#rank.set(k, d);
                 this.$debug(`refreshed [${k}]`, d.rank);
