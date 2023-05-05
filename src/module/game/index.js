@@ -345,7 +345,7 @@ export default class Game extends IModule {
         if(this.#privates.size >= 32**5) return null;
         const id = new Array(5)
             .fill(32)
-            .map(v=>Math.floor(Math.pair()*v).toString(v))
+            .map(v=>Math.floor(Math.random()*v).toString(v))
             .join('');
         return this.#privates.has(id) ? this.#roomId(): id;
     }
