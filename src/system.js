@@ -46,6 +46,7 @@ async function initCore(configure) {
     global.$$ =
     global.$core = core;
     await core.initialize();
+    return core;
 }
 
 export async function start(cfgList) {
@@ -71,7 +72,7 @@ export async function start(cfgList) {
         cfgList
     );
     await initLogger(log4js);
-    await initCore(core);
+    return initCore(core);
 }
 
 export default start;

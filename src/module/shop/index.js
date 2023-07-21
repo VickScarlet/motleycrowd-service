@@ -40,6 +40,13 @@ export default class Shop extends IModule {
         this.$info('initialized in', Date.now()-start, 'ms.');
     }
 
+    /** @override */
+    async shutdown() {
+        this.$info('shutdown...');
+        this.#job.stop();
+        this.$info('shutdown.');
+    }
+
     async restocking() {
         const goods = this.#pick();
         const expired = this.#job.nextDate().toJSDate();
