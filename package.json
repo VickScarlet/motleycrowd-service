@@ -19,16 +19,16 @@
     "sheet": "vt transform -t js -s 4 data/*.xlsx"
   },
   "dependencies": {
-    "cron": "^2.1.0",
+    "cron": "^2.3.1",
     "js-yaml": "^4.1.0",
-    "log4js": "^6.7.0",
-    "mongodb": "^4.12.1",
+    "log4js": "^6.9.1",
+    "mongodb": "^4.16.0",
     "uuid": "^8.3.2",
-    "ws": "^8.11.0"
+    "ws": "^8.13.0"
   },
   "devDependencies": {
-    "eslint": "^8.28.0",
-    "mocha": "^10.1.0",
+    "eslint": "^8.45.0",
+    "mocha": "^10.2.0",
     "v-transform": "^2.0.2"
   }
 }
